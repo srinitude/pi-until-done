@@ -118,7 +118,7 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("types: [opened, reopened, edited]");
 		expect(source).toContain("roles: all");
 		expect(source).toContain("x-ai/grok-4.5");
-		expect(source).toContain("max-turns: 8");
+		expect(source).toContain("max-turns: 10");
 		expect(source).toContain("max-continuations: 16");
 		expect(source).toContain("at most 25");
 		expect(source).toContain("TRIAGE_MAX_ITEMS");
@@ -157,7 +157,11 @@ describe("Pi lockstep agentic workflows", () => {
 		const lock = await optionalWorkflow("issue-triage.lock.yml");
 		expect(runner).toContain("issue-triage.lock.yml");
 		expect(lock).toContain("validate-issue-triage-output.mjs");
+		expect(lock).toContain("RUN_DETECTION: false");
 		expect(lock).toContain("DETECTION_AGENTIC_EXECUTION_OUTCOME: skipped");
+		expect(lock).not.toContain(
+			"RUN_DETECTION: ${{ steps.detection_guard.outputs.run_detection }}",
+		);
 		expect(lock).not.toContain("steps.detection_agentic_execution.outcome");
 		expect(lock).not.toContain("issues: write");
 	});

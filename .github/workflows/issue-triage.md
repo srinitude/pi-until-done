@@ -32,7 +32,7 @@ engine:
     COPILOT_PROVIDER_MAX_PROMPT_TOKENS: "500000"
     COPILOT_PROVIDER_MAX_OUTPUT_TOKENS: "32768"
 strict: true
-max-turns: 8
+max-turns: 10
 max-ai-credits: 100
 max-daily-ai-credits: 125
 timeout-minutes: 30
