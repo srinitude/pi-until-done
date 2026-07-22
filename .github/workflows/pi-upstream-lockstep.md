@@ -78,7 +78,7 @@ tools:
     toolsets: [repos, pull_requests]
 safe-outputs:
   github-app:
-    client-id: ${{ vars.PI_LOCKSTEP_APP_ID }}
+    client-id: ${{ vars.PI_LOCKSTEP_APP_CLIENT_ID }}
     private-key: ${{ secrets.PI_LOCKSTEP_APP_PRIVATE_KEY }}
     owner: srinitude
     repositories: [pi-until-done]

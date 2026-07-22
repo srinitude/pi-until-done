@@ -207,7 +207,7 @@ A separate trusted job consumes the structured patch artifact. Before minting a 
 - test-count and anti-weakening checks;
 - deterministic gates succeeded against the same patch SHA.
 
-Only then does it mint a short-lived token from a GitHub App installed solely on `srinitude/pi-until-done`. Its App ID is repository variable `PI_LOCKSTEP_APP_ID`; its private key is repository secret `PI_LOCKSTEP_APP_PRIVATE_KEY`. The App has repository contents, pull-request, and issue permissions needed for branches and escalation, but no Actions administration, secrets, package publishing, or repository administration permission.
+Only then does it mint a short-lived token from a GitHub App installed solely on `srinitude/pi-until-done`. Its numeric App ID is repository variable `PI_LOCKSTEP_APP_ID`, its client ID is repository variable `PI_LOCKSTEP_APP_CLIENT_ID`, and its private key is repository secret `PI_LOCKSTEP_APP_PRIVATE_KEY`. The App has repository contents, pull-request, and issue permissions needed for branches and escalation, but no Actions administration, secrets, package publishing, or repository administration permission.
 
 The actuator creates or updates the single draft repair PR. The model never handles the token. Repository settings enable auto-merge and protect `main` with required matrix, contract, and review checks; neither the App nor administrators bypass those checks, and direct pushes to `main` are disallowed.
 

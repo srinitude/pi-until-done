@@ -26,7 +26,7 @@ describe("Pi lockstep agentic workflows", () => {
 
 	test("uses an isolated GitHub App safe output with patch limits", async () => {
 		const source = await workflow("pi-upstream-lockstep.md");
-		expect(source).toContain("PI_LOCKSTEP_APP_ID");
+		expect(source).toContain("PI_LOCKSTEP_APP_CLIENT_ID");
 		expect(source).toContain("PI_LOCKSTEP_APP_PRIVATE_KEY");
 		expect(source).toContain("max-patch-files: 20");
 		expect(source).toContain('github-token-for-extra-empty-commit: "app"');
