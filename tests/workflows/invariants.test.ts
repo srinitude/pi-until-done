@@ -90,6 +90,13 @@ describe("Pi lockstep agentic workflows", () => {
 		}
 	});
 
+	test("keeps workflow validation portable when Docker is unavailable", async () => {
+		const source = await readFile(resolve(root, "mise.toml"), "utf8");
+		expect(source).toContain("if docker info >/dev/null 2>&1; then");
+		expect(source).toContain("gh-aw lint");
+		expect(source).toContain("Docker unavailable; strict gh-aw compile completed");
+	});
+
 	test("removes the stale PAT and CodeRabbit merge gate", async () => {
 		const path = resolve(
 			root,
