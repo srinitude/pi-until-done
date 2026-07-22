@@ -78,22 +78,7 @@ run = "node tests/structure/check.mjs"
 
 [tasks.workflows]
 description = "Compile, patch, lint, and test trusted workflow policy"
-run = """
-gh-aw compile --strict
-node .github/scripts/patch-gh-aw-lock.mjs
-if docker info >/dev/null 2>&1; then
-  gh-aw lint
-else
-  echo 'Docker unavailable; strict gh-aw compile completed (generated lint runs on Docker-capable matrix jobs).'
-fi
-find .github/workflows -name '*.yml' ! -name '*.lock.yml' -print0 | xargs -0 actionlint
-bun test tests/workflows
-if ! git diff --quiet -- .github/workflows/*.lock.yml .github/workflows/agentics-maintenance.yml; then
-  echo 'Compiled gh-aw workflows are stale. Run mise run workflows and commit them.'
-  git diff --stat -- .github/workflows/*.lock.yml .github/workflows/agentics-maintenance.yml
-  exit 1
-fi
-"""
+run = "node .github/scripts/verify-workflows.mjs"
 
 # ---- Convenience composites ------------------------------------------------
 

@@ -102,10 +102,15 @@ describe("Pi lockstep agentic workflows", () => {
 	});
 
 	test("keeps workflow validation portable when Docker is unavailable", async () => {
-		const source = await readFile(resolve(root, "mise.toml"), "utf8");
-		expect(source).toContain("if docker info >/dev/null 2>&1; then");
-		expect(source).toContain("gh-aw lint");
-		expect(source).toContain("Docker unavailable; strict gh-aw compile completed");
+		const mise = await readFile(resolve(root, "mise.toml"), "utf8");
+		const runner = await readFile(
+			resolve(root, ".github/scripts/verify-workflows.mjs"),
+			"utf8",
+		);
+		expect(mise).toContain('run = "node .github/scripts/verify-workflows.mjs"');
+		expect(runner).toContain('run("gh-aw", ["compile", "--strict"])');
+		expect(runner).toContain('canRun("docker", ["info"])');
+		expect(runner).toContain("Docker unavailable; strict gh-aw compile completed");
 	});
 
 	test("serializes generated workflow writes before the full test suite", async () => {
