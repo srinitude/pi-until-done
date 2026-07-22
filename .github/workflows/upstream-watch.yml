@@ -1,156 +1,86 @@
 name: Upstream Pi watch
 
-# Daily check for new releases of the @mariozechner/pi-* packages this
-# extension depends on. When a newer version is available on npm, the
-# workflow refreshes the bun lockfile, runs `mise run ci` against the
-# upstream bump, and opens a PR with the diff so a human can review.
-#
-# Pinned versions live in bun.lock (package.json keeps peer/devDeps at
-# `*`), so `bun update <pkg>` is the canonical bump operation.
-
 on:
   schedule:
-    # Daily at 06:13 UTC — staggered minute keeps it off the cron storm
-    # that hits hourly/half-hourly workflows.
     - cron: "13 6 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  actions: write
+  contents: read
+  issues: write
+  pull-requests: read
 
 concurrency:
-  group: upstream-watch
-  cancel-in-progress: true
+  group: upstream-pi-detector
+  cancel-in-progress: false
 
 jobs:
-  watch:
-    name: Bump pi-* and validate
+  detect:
+    name: Detect exact Pi release
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install mise
-        uses: jdx/mise-action@v2
+      - name: Checkout without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          version: 2026.5.0
-          install: true
-          cache: true
-          experimental: true
+          persist-credentials: false
 
-      - name: Trust mise.toml (non-interactive)
-        run: mise trust
-
-      - name: Install bun deps (current pinned versions)
-        run: mise run install-deps
-
-      - name: Capture pre-bump versions
-        id: pre
+      - name: Resolve exact package versions
+        id: versions
+        shell: bash
         run: |
-          pre_agent=$(jq -r '.version' node_modules/@mariozechner/pi-coding-agent/package.json)
-          pre_ai=$(jq -r '.version' node_modules/@mariozechner/pi-ai/package.json)
-          echo "agent=$pre_agent" >> "$GITHUB_OUTPUT"
-          echo "ai=$pre_ai" >> "$GITHUB_OUTPUT"
-          echo "pre-bump pi-coding-agent: $pre_agent"
-          echo "pre-bump pi-ai: $pre_ai"
+          set -euo pipefail
+          current=$(jq -r '.piVersion' compatibility/pi.json)
+          coding=$(npm view @earendil-works/pi-coding-agent version)
+          ai=$(npm view @earendil-works/pi-ai version)
+          tui=$(npm view @earendil-works/pi-tui version)
+          printf 'current=%s\ncoding=%s\nai=%s\ntui=%s\n' "$current" "$coding" "$ai" "$tui" >> "$GITHUB_OUTPUT"
+          echo "current=$current latest coding=$coding ai=$ai tui=$tui"
 
-      - name: Look up latest npm versions
-        id: latest
+      - name: Fail closed on upstream version skew
+        if: steps.versions.outputs.coding != steps.versions.outputs.ai || steps.versions.outputs.coding != steps.versions.outputs.tui
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
         run: |
-          latest_agent=$(npm view @mariozechner/pi-coding-agent version)
-          latest_ai=$(npm view @mariozechner/pi-ai version)
-          echo "agent=$latest_agent" >> "$GITHUB_OUTPUT"
-          echo "ai=$latest_ai" >> "$GITHUB_OUTPUT"
-          echo "latest pi-coding-agent: $latest_agent"
-          echo "latest pi-ai: $latest_ai"
-
-      - name: Skip if already at latest
-        id: gate
-        run: |
-          if [ "${{ steps.pre.outputs.agent }}" = "${{ steps.latest.outputs.agent }}" ] \
-          && [ "${{ steps.pre.outputs.ai }}" = "${{ steps.latest.outputs.ai }}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Up to date::Both pi-* deps already at latest npm versions"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Bump pi-* deps
-        if: steps.gate.outputs.skip != 'true'
-        run: bun update @mariozechner/pi-coding-agent @mariozechner/pi-ai
-
-      - name: Capture post-bump versions
-        if: steps.gate.outputs.skip != 'true'
-        id: post
-        run: |
-          post_agent=$(jq -r '.version' node_modules/@mariozechner/pi-coding-agent/package.json)
-          post_ai=$(jq -r '.version' node_modules/@mariozechner/pi-ai/package.json)
-          echo "agent=$post_agent" >> "$GITHUB_OUTPUT"
-          echo "ai=$post_ai" >> "$GITHUB_OUTPUT"
-
-      - name: Run full CI against bumped deps
-        if: steps.gate.outputs.skip != 'true'
-        id: ci
-        continue-on-error: true
-        run: mise run ci
-
-      - name: Open / update upstream-bump PR
-        if: steps.gate.outputs.skip != 'true'
-        id: cpr
-        uses: peter-evans/create-pull-request@v7
-        with:
-          # Prefer UPSTREAM_PAT (a PAT with repo+workflow scope) so PR
-          # events propagate to the CI workflow on this repo. PRs created
-          # with the default GITHUB_TOKEN do NOT trigger downstream
-          # workflow runs (recursive-workflow safeguard) — without a PAT,
-          # auto-merge will block forever waiting for CI to start.
-          token: ${{ secrets.UPSTREAM_PAT || secrets.GITHUB_TOKEN }}
-          branch: upstream/pi-bump
-          base: main
-          delete-branch: true
-          commit-message: |
-            chore(deps): bump @mariozechner/pi-coding-agent ${{ steps.pre.outputs.agent }} → ${{ steps.post.outputs.agent }}, pi-ai ${{ steps.pre.outputs.ai }} → ${{ steps.post.outputs.ai }}
-          title: |
-            Upstream pi: ${{ steps.pre.outputs.agent }} → ${{ steps.post.outputs.agent }} (in-workflow CI ${{ steps.ci.outcome }})
-          body: |
-            Automated upstream bump from `.github/workflows/upstream-watch.yml`.
-
-            | Package | Before | After |
-            | --- | --- | --- |
-            | `@mariozechner/pi-coding-agent` | `${{ steps.pre.outputs.agent }}` | `${{ steps.post.outputs.agent }}` |
-            | `@mariozechner/pi-ai` | `${{ steps.pre.outputs.ai }}` | `${{ steps.post.outputs.ai }}` |
-
-            **In-workflow `mise run ci`**: ${{ steps.ci.outcome }}.
-
-            **Auto-merge gate**: `.github/workflows/upstream-pi-merge-gate.yml`
-            squash-merges this PR automatically once **both** of these
-            conditions hold on the latest head SHA:
-
-            1. **CI is green** — every required check run on the head
-               SHA reports `success` (or `skipped`).
-            2. **CodeRabbit approved** — the most recent review from
-               `coderabbitai[bot]` is in `APPROVED` state.
-
-            Either gate failing keeps the PR open. The gate workflow
-            re-evaluates on every CI completion and every new
-            CodeRabbit review, so push-fixes converge automatically.
-
-            If CI fails, the breakage points to a real upstream API drift
-            — fix the extension before merging rather than pinning back.
-            Review the [pi-coding-agent CHANGELOG](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/CHANGELOG.md)
-            and the [pi-ai CHANGELOG](https://github.com/badlogic/pi-mono/blob/main/packages/ai/CHANGELOG.md)
-            for breaking changes between these versions.
-          labels: |
-            dependencies
-            upstream-pi
-            auto-merge
-          reviewers: |
-            coderabbitai
-
-      - name: Surface CI outcome
-        if: steps.gate.outputs.skip != 'true' && steps.ci.outcome != 'success'
-        run: |
-          echo "::warning title=Upstream bump CI failed::In-workflow CI did not pass against pi-coding-agent ${{ steps.post.outputs.agent }} / pi-ai ${{ steps.post.outputs.ai }}. PR is open and the merge-gate workflow will hold until the PR-triggered CI matrix passes AND CodeRabbit approves."
+          set -euo pipefail
+          title="[pi-lockstep blocked] upstream package version skew"
+          body="Exact latest versions disagree: coding-agent=${{ steps.versions.outputs.coding }}, pi-ai=${{ steps.versions.outputs.ai }}, pi-tui=${{ steps.versions.outputs.tui }}. No repair was dispatched."
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')
+          if [ -z "$existing" ]; then gh issue create --title "$title" --body "$body" --label needs-human; fi
           exit 1
+
+      - name: Check whether repair is needed
+        id: gate
+        if: steps.versions.outputs.coding == steps.versions.outputs.ai && steps.versions.outputs.coding == steps.versions.outputs.tui
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="${{ steps.versions.outputs.coding }}"
+          if [ "$target" = "${{ steps.versions.outputs.current }}" ]; then
+            echo "dispatch=false" >> "$GITHUB_OUTPUT"
+            echo "Already compatible with Pi $target"
+            exit 0
+          fi
+          open=$(gh pr list --state open --label upstream-pi --search "$target in:title" --json number --jq 'length')
+          active=$(gh run list --workflow pi-upstream-lockstep.lock.yml --json status --limit 20 --jq '[.[] | select(.status == "queued" or .status == "in_progress")] | length')
+          if [ "$open" -gt 0 ] || [ "$active" -gt 0 ]; then
+            echo "dispatch=false" >> "$GITHUB_OUTPUT"
+            echo "Repair already open or running for Pi $target"
+            exit 0
+          fi
+          echo "dispatch=true" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch sandboxed repair
+        if: steps.gate.outputs.dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: gh workflow run pi-upstream-lockstep.lock.yml -f target-version="${{ steps.gate.outputs.target }}"

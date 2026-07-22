@@ -1,0 +1,152 @@
+name: Post-compatibility release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: post-compat-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create verified patch release
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Mint repository-only App token
+        id: app
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ vars.PI_LOCKSTEP_APP_ID }}
+          private-key: ${{ secrets.PI_LOCKSTEP_APP_PRIVATE_KEY }}
+          owner: srinitude
+          repositories: pi-until-done
+
+      - name: Checkout exact verified SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify main has not moved
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "${{ github.event.workflow_run.head_sha }}"
+          test "$(git rev-parse origin/main)" = "${{ github.event.workflow_run.head_sha }}"
+
+      - name: Install mise and dependencies
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
+        with:
+          version: 2026.5.0
+          install: true
+          cache: true
+          experimental: true
+
+      - name: Trust and verify locally
+        shell: bash
+        run: |
+          mise trust
+          mise run install-deps
+          mise run ci
+
+      - name: Determine release action
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version package.json)
+          pi=$(jq -r .piVersion compatibility/pi.json)
+          latest=$(mise exec -- npm view pi-until-done version)
+          {
+            echo "version=$version"
+            echo "pi=$pi"
+            echo "latest=$latest"
+          } >> "$GITHUB_OUTPUT"
+          order=$(mise exec -- node -e 'const [a,b]=process.argv.slice(1).map(v=>v.split(".").map(Number)); console.log(a.some((n,i)=>n!==b[i]) ? (a.findIndex((n,i)=>n!==b[i])>=0 && a[a.findIndex((n,i)=>n!==b[i])] > b[a.findIndex((n,i)=>n!==b[i])] ? "newer" : "older") : "equal")' "$version" "$latest")
+          if [ "$order" = "older" ]; then echo "Package version regressed"; exit 1; fi
+          if [ "$order" = "newer" ]; then
+            if [ "$version" = "0.3.0" ]; then
+              echo "action=manual-initial" >> "$GITHUB_OUTPUT"
+            else
+              echo "action=tag" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          temp=$(mktemp -d)
+          mise exec -- npm pack "pi-until-done@$latest" --pack-destination "$temp" >/dev/null
+          published_pi=$(tar -xOf "$temp"/*.tgz package/compatibility/pi.json 2>/dev/null | jq -r '.piVersion // empty' || true)
+          rm -rf "$temp"
+          if [ -z "$published_pi" ] && [ "$version" = "0.2.2" ]; then
+            echo "action=await-initial" >> "$GITHUB_OUTPUT"
+          elif [ "$published_pi" != "$pi" ]; then
+            echo "action=bump" >> "$GITHUB_OUTPUT"
+          else
+            echo "action=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare patch version
+        if: steps.gate.outputs.action == 'bump'
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+          mise run version:patch
+          mise run install-deps
+          mise run ci
+          next=$(jq -r .version package.json)
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Open guarded version PR
+        if: steps.gate.outputs.action == 'bump'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="release/pi-${{ steps.gate.outputs.pi }}-v${{ steps.bump.outputs.version }}"
+          git config user.name "pi-lockstep[bot]"
+          git config user.email "pi-lockstep[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add package.json bun.lock
+          git commit -m "release v${{ steps.bump.outputs.version }}"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
+          git push origin "$branch"
+          url=$(gh pr create --base main --head "$branch" --title "Release v${{ steps.bump.outputs.version }} for Pi ${{ steps.gate.outputs.pi }}" --body "Automated version-only PR after compatibility repair and green CI on ${{ github.event.workflow_run.head_sha }}." --label automated --label release)
+          gh pr merge "$url" --auto --squash --delete-branch
+
+      - name: Tag a verified future patch
+        if: steps.gate.outputs.action == 'tag'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.gate.outputs.version }}"
+          test "$(git rev-parse HEAD)" = "${{ github.event.workflow_run.head_sha }}"
+          git config user.name "pi-lockstep[bot]"
+          git config user.email "pi-lockstep[bot]@users.noreply.github.com"
+          git tag -a "v$version" -m "release v$version"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
+          git push origin "v$version"
+
+      - name: Hold initial 0.3.0 for manual initiation
+        if: steps.gate.outputs.action == 'manual-initial'
+        shell: bash
+        run: |
+          version="${{ steps.gate.outputs.version }}"
+          if [ "$version" = "0.3.0" ]; then
+            echo "Initial 0.3.0 is verified but intentionally awaits manual publish initiation."
+          fi

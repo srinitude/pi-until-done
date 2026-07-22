@@ -1,9 +1,9 @@
 import type {
 	ExtensionAPI,
 	ExtensionCommandContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import { SETUP_CONFIRM_TIMEOUT_MS } from "../constants";
-import { initialState } from "../initial-state";
+import { resetGoalState } from "../initial-state";
 import { persist, type Store } from "../store";
 import { DIALOGS, NOTIFY } from "../strings";
 import { refreshStatus } from "../ui/status-line";
@@ -32,7 +32,7 @@ const initSetupState = (
 ): void => {
 	const id = `ud-${Math.random().toString(36).slice(2, 8)}`;
 	store.state = {
-		...initialState(),
+		...resetGoalState(store.state),
 		id,
 		goal: intent,
 		status: "setup",
@@ -59,12 +59,27 @@ const grantContractApproval = (
 	pi.sendUserMessage("Approved. Call `until_done_set` now and begin work.");
 };
 
+const rejectContract = (
+	pi: ExtensionAPI,
+	store: Store,
+	ctx: ExtensionCommandContext,
+): void => {
+	persist(
+		pi,
+		store,
+		"cancel",
+		resetGoalState(store.state),
+		"user rejected contract",
+	);
+	ctx.ui.notify(NOTIFY.contractRejected, "info");
+};
+
 const awaitContractConfirmation = async (
 	pi: ExtensionAPI,
 	store: Store,
 	ctx: ExtensionCommandContext,
 ): Promise<void> => {
-	if (store.autopilotEnabled) {
+	if (store.state.autopilotEnabled) {
 		grantContractApproval(pi, store, ctx, "autopilot");
 		refreshStatus(store, ctx);
 		refreshWidget(store, ctx, true);
@@ -80,8 +95,7 @@ const awaitContractConfirmation = async (
 	if (confirmed) {
 		grantContractApproval(pi, store, ctx, "user approved contract");
 	} else {
-		persist(pi, store, "cancel", initialState(), "user rejected contract");
-		ctx.ui.notify(NOTIFY.contractRejected, "info");
+		rejectContract(pi, store, ctx);
 	}
 	refreshStatus(store, ctx);
 	refreshWidget(store, ctx, true);
@@ -96,7 +110,13 @@ export const cmdSetup = async (
 	if (isReplaceable(store.state.status)) {
 		const replace = await confirmReplace(store, ctx);
 		if (!replace) return;
-		persist(pi, store, "cancel", initialState(), "replaced by new setup");
+		persist(
+			pi,
+			store,
+			"cancel",
+			resetGoalState(store.state),
+			"replaced by new setup",
+		);
 	}
 	initSetupState(pi, store, intent);
 	pi.sendUserMessage(setupPrompt(intent));

@@ -81,6 +81,11 @@ export interface JudgeModel {
 	modelId: string;
 }
 
+export type JudgeDefault =
+	| { mode: "cross"; provider: string; modelId: string }
+	| { mode: "same" }
+	| null;
+
 export interface NorthStar {
 	goal: string;
 	doneCriteria: string;
@@ -126,6 +131,8 @@ export interface GoalState {
 	goalType: GoalType;
 	surfaces: Surface[];
 	distilled?: string;
+	autopilotEnabled: boolean;
+	judgeDefault: JudgeDefault;
 }
 
 export type StateEventKind =
@@ -142,9 +149,12 @@ export type StateEventKind =
 	| "plan"
 	| "replan"
 	| "task_update"
-	| "clean_end_nudge";
+	| "clean_end_nudge"
+	| "migrate"
+	| "preference";
 
 export interface StateEvent {
+	schemaVersion?: 3;
 	kind: StateEventKind;
 	goalId: string;
 	at: number;

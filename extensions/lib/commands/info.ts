@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { stringify as yamlStringify } from "yaml";
 import type { Store } from "../store";
 import { HELP_TEXT, NOTIFY } from "../strings";

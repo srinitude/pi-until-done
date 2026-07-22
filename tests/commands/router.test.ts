@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { fauxAssistantMessage } from "@mariozechner/pi-ai";
+import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
 import { subcommands } from "../../extensions/lib/commands/router";
 import {
 	createTestRuntime,
@@ -102,18 +102,19 @@ describe("dispatch (real runtime)", () => {
 		expect(kinds).toContain("set");
 	});
 
-	test("/until-done autopilot toggles store.autopilotEnabled (sticky session toggle, #4 fix)", async () => {
+	test("/until-done autopilot persists the session preference", async () => {
 		rt = await createTestRuntime({ withUi: true });
-		expect(rt.store.autopilotEnabled).toBe(false);
+		expect(rt.store.state.autopilotEnabled).toBe(false);
 		await rt.prompt("/until-done autopilot");
-		expect(rt.store.autopilotEnabled).toBe(true);
+		expect(rt.store.state.autopilotEnabled).toBe(true);
+		expect(rt.getStateEntries().at(-1)?.kind).toBe("preference");
 		expect(
 			rt.ui.notifies.some((n) =>
 				n.message.startsWith("/until-done · autopilot ON"),
 			),
 		).toBe(true);
 		await rt.prompt("/until-done autopilot");
-		expect(rt.store.autopilotEnabled).toBe(false);
+		expect(rt.store.state.autopilotEnabled).toBe(false);
 		expect(
 			rt.ui.notifies.some((n) =>
 				n.message.startsWith("/until-done · autopilot OFF"),

@@ -1,61 +1,36 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { registerFauxProvider } from "@mariozechner/pi-ai";
+import type { Model } from "@earendil-works/pi-ai";
 import {
-	type AuthStorage,
 	type CreateAgentSessionRuntimeFactory,
 	createAgentSessionFromServices,
 	createAgentSessionServices,
 	type ExtensionAPI,
-} from "@mariozechner/pi-coding-agent";
-
-type Faux = ReturnType<typeof registerFauxProvider>;
+	type ModelRuntime,
+} from "@earendil-works/pi-coding-agent";
 
 export const seedDir = (
 	cwd: string,
 	seeds: Record<string, string> | undefined,
 ): void => {
 	if (!seeds) return;
-	for (const [rel, content] of Object.entries(seeds)) {
-		const full = join(cwd, rel);
-		const dir = full.substring(0, full.lastIndexOf("/"));
-		if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
-		Bun.write(full, content);
+	for (const [relativePath, content] of Object.entries(seeds)) {
+		const fullPath = join(cwd, relativePath);
+		const directory = fullPath.slice(0, fullPath.lastIndexOf("/"));
+		if (directory && !existsSync(directory)) {
+			mkdirSync(directory, { recursive: true });
+		}
+		writeFileSync(fullPath, content);
 	}
 };
 
-export const registerJudgeWithRuntime = (
-	pi: ExtensionAPI,
-	judgeFaux: Faux,
-): void => {
-	const m = judgeFaux.getModel();
-	pi.registerProvider("faux-judge", {
-		api: m.api,
-		baseUrl: m.baseUrl ?? "http://faux/",
-		apiKey: "faux-judge-key",
-		models: [
-			{
-				id: m.id,
-				name: m.name,
-				api: m.api,
-				reasoning: m.reasoning,
-				input: [...m.input],
-				cost: { ...m.cost },
-				contextWindow: m.contextWindow,
-				maxTokens: m.maxTokens,
-			},
-		],
-	});
-};
-
 export const buildRuntimeFactory = (
-	authStorage: AuthStorage,
-	faux: Faux,
+	modelRuntime: ModelRuntime,
+	model: Model<string>,
 	factory: (pi: ExtensionAPI) => void,
 ): CreateAgentSessionRuntimeFactory => {
 	const runtimeOptions = {
-		authStorage,
-		model: faux.getModel(),
+		modelRuntime,
 		resourceLoaderOptions: {
 			extensionFactories: [factory],
 			noSkills: true,
@@ -64,18 +39,18 @@ export const buildRuntimeFactory = (
 			noContextFiles: true,
 		},
 	};
-	return async ({ cwd: rcwd, sessionManager, sessionStartEvent }) => {
+	return async ({ cwd, sessionManager, sessionStartEvent }) => {
 		const services = await createAgentSessionServices({
 			...runtimeOptions,
-			cwd: rcwd,
-			agentDir: rcwd,
+			cwd,
+			agentDir: cwd,
 		});
 		return {
 			...(await createAgentSessionFromServices({
 				services,
 				sessionManager,
 				sessionStartEvent,
-				model: faux.getModel(),
+				model,
 			})),
 			services,
 			diagnostics: services.diagnostics,

@@ -1,113 +1,118 @@
+import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { OUTPUT_TRUNCATION_CHARS, OUTPUT_TRUNCATION_MARKER } from "./constants";
 import type { CiCheck, CiResult } from "./types";
 
-type SpawnLike = ReturnType<typeof Bun.spawn>;
+const isWindows = process.platform === "win32";
 
-const decoder = new TextDecoder();
-
-const isWin = process.platform === "win32";
+type Child = ChildProcessWithoutNullStreams;
 
 interface ProcState {
-	proc: SpawnLike;
-	readers: ReadableStreamDefaultReader<Uint8Array>[];
+	child: Child;
+	chunks: Buffer[];
+	finished: boolean;
 	killed: boolean;
 }
 
-const drainCaptured = async (
-	stream: unknown,
-	state: ProcState,
-): Promise<string> => {
-	if (!stream || typeof stream !== "object" || !("getReader" in stream))
-		return "";
-	const reader = (stream as ReadableStream<Uint8Array>).getReader();
-	state.readers.push(reader);
-	let out = "";
-	try {
-		while (true) {
-			const { value, done } = await reader.read();
-			if (done) break;
-			out += decoder.decode(value, { stream: true });
-		}
-	} catch {
-		// reader was cancelled by killTree — return what we have so far
-	}
-	return out + decoder.decode();
+const truncate = (output: string): string =>
+	output.length <= OUTPUT_TRUNCATION_CHARS
+		? output
+		: OUTPUT_TRUNCATION_MARKER + output.slice(-OUTPUT_TRUNCATION_CHARS);
+
+const start = (argv: string[], cwd: string): Child => {
+	const child = spawn(argv[0], argv.slice(1), {
+		cwd,
+		detached: !isWindows,
+		stdio: ["pipe", "pipe", "pipe"],
+		windowsHide: true,
+	});
+	child.stdin.end();
+	return child;
 };
 
-const truncate = (s: string): string =>
-	s.length <= OUTPUT_TRUNCATION_CHARS
-		? s
-		: OUTPUT_TRUNCATION_MARKER + s.slice(-OUTPUT_TRUNCATION_CHARS);
+const killWindowsTree = (child: Child): void => {
+	if (child.pid === undefined) return;
+	const killer = spawn(
+		"taskkill.exe",
+		["/PID", String(child.pid), "/T", "/F"],
+		{ stdio: "ignore", windowsHide: true },
+	);
+	killer.once("error", () => child.kill("SIGKILL"));
+};
 
-const startSpawn = (argv: string[], cwd: string): SpawnLike =>
-	Bun.spawn(argv, {
-		cwd,
-		stdout: "pipe",
-		stderr: "pipe",
-		// On Unix, put the spawn in its own process group so SIGKILL on the
-		// negative pid takes the whole descendant tree. Without this, killing
-		// only the shell wrapper leaves orphaned children holding the
-		// stdout/stderr pipes open and `proc.exited` blocks until the orphan
-		// finishes naturally (e.g. a 5s `sleep 5` waits the whole 5s).
-		// Windows has no process groups — we cancel the readers instead.
-		...(isWin ? {} : { detached: true }),
-	});
+const killUnixTree = (child: Child): void => {
+	if (child.pid === undefined) return;
+	try {
+		process.kill(-child.pid, "SIGKILL");
+	} catch {
+		child.kill("SIGKILL");
+	}
+};
 
 const killTree = (state: ProcState): void => {
+	if (state.finished || state.killed) return;
 	state.killed = true;
-	const { proc } = state;
-	if (!isWin) {
-		try {
-			process.kill(-proc.pid, "SIGKILL");
-		} catch {
-			try {
-				proc.kill("SIGKILL");
-			} catch {
-				/* best-effort */
-			}
-		}
-	} else {
-		try {
-			proc.kill("SIGKILL");
-		} catch {
-			/* best-effort */
-		}
-	}
-	// Cancel any captured pipe readers so `drainCaptured` returns immediately
-	// even when an orphan still holds the writer side. This is the only
-	// portable way to force-resolve the drain on Windows (no process groups).
-	for (const reader of state.readers) {
-		reader.cancel().catch(() => {});
+	try {
+		if (isWindows) killWindowsTree(state.child);
+		else killUnixTree(state.child);
+	} catch {
+		state.child.kill("SIGKILL");
 	}
 };
 
-const armTimeout = (state: ProcState, timeoutMs: number): NodeJS.Timeout =>
-	setTimeout(() => killTree(state), timeoutMs);
+const collect = (state: ProcState): Promise<number | null> =>
+	new Promise((resolve) => {
+		const capture = (chunk: Buffer | string) =>
+			state.chunks.push(Buffer.from(chunk));
+		state.child.stdout.on("data", capture);
+		state.child.stderr.on("data", capture);
+		state.child.once("error", (error) => {
+			state.chunks.push(Buffer.from(error.message));
+		});
+		state.child.once("close", (code) => {
+			state.finished = true;
+			resolve(code);
+		});
+	});
 
 const armAbort = (
 	state: ProcState,
 	signal: AbortSignal | undefined,
 ): (() => void) => {
 	if (!signal) return () => {};
-	const onAbort = () => killTree(state);
-	if (signal.aborted) {
-		killTree(state);
-		return () => {};
-	}
-	signal.addEventListener("abort", onAbort, { once: true });
-	return () => signal.removeEventListener("abort", onAbort);
+	const abort = () => killTree(state);
+	if (signal.aborted) abort();
+	else signal.addEventListener("abort", abort, { once: true });
+	return () => signal.removeEventListener("abort", abort);
 };
 
-const collect = async (
+const failure = (
+	check: CiCheck,
+	started: number,
+	error: unknown,
+): CiResult => ({
+	verb: check.verb,
+	command: check.argv.join(" "),
+	skipped: false,
+	ok: false,
+	exitCode: null,
+	output: error instanceof Error ? error.message : String(error),
+	durationMs: Date.now() - started,
+});
+
+const result = (
+	check: CiCheck,
 	state: ProcState,
-): Promise<{ exit: number; output: string }> => {
-	const [stdout, stderr, exit] = await Promise.all([
-		drainCaptured(state.proc.stdout, state),
-		drainCaptured(state.proc.stderr, state),
-		state.proc.exited,
-	]);
-	return { exit, output: `${stdout}${stderr}` };
-};
+	exitCode: number | null,
+	started: number,
+): CiResult => ({
+	verb: check.verb,
+	command: check.argv.join(" "),
+	skipped: false,
+	ok: exitCode === 0,
+	exitCode,
+	output: truncate(Buffer.concat(state.chunks).toString("utf8")),
+	durationMs: Date.now() - started,
+});
 
 export const runOne = async (
 	check: CiCheck,
@@ -115,36 +120,21 @@ export const runOne = async (
 	signal?: AbortSignal,
 ): Promise<CiResult> => {
 	const started = Date.now();
-	const command = check.argv.join(" ");
-	const proc = startSpawn(check.argv, cwd);
-	const state: ProcState = { proc, readers: [], killed: false };
-	const timer = armTimeout(state, check.timeoutMs);
-	const detachAbort = armAbort(state, signal);
 	try {
-		const { exit, output } = await collect(state);
+		const state: ProcState = {
+			child: start(check.argv, cwd),
+			chunks: [],
+			finished: false,
+			killed: false,
+		};
+		const timer = setTimeout(() => killTree(state), check.timeoutMs);
+		const detachAbort = armAbort(state, signal);
+		const exitCode = await collect(state);
 		clearTimeout(timer);
 		detachAbort();
-		return {
-			verb: check.verb,
-			command,
-			skipped: false,
-			ok: exit === 0,
-			exitCode: exit,
-			output: truncate(output),
-			durationMs: Date.now() - started,
-		};
-	} catch (e) {
-		clearTimeout(timer);
-		detachAbort();
-		return {
-			verb: check.verb,
-			command,
-			skipped: false,
-			ok: false,
-			exitCode: null,
-			output: e instanceof Error ? e.message : String(e),
-			durationMs: Date.now() - started,
-		};
+		return result(check, state, exitCode, started);
+	} catch (error) {
+		return failure(check, started, error);
 	}
 };
 
@@ -153,4 +143,4 @@ export const runAll = async (
 	cwd: string,
 	signal?: AbortSignal,
 ): Promise<CiResult[]> =>
-	Promise.all(checks.map((c) => runOne(c, cwd, signal)));
+	Promise.all(checks.map((check) => runOne(check, cwd, signal)));

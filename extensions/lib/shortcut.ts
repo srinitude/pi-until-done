@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { Store } from "./store";
 import { SHORTCUT_DESCRIPTION } from "./strings";
 import { refreshWidget } from "./ui/widget";

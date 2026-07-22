@@ -15,7 +15,7 @@ describe("runtime harness smoke", () => {
 	test("boots with extension loaded and store available", async () => {
 		runtime = await createTestRuntime();
 		expect(runtime.store.state.status).toBe("setup");
-		expect(runtime.store.autopilotEnabled).toBe(false);
+		expect(runtime.store.state.autopilotEnabled).toBe(false);
 	});
 
 	test("registers all 8 until_done_* tools", async () => {

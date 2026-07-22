@@ -2,78 +2,52 @@
 
 ## Reporting a vulnerability
 
-If you find a security issue in `pi-until-done`, please report it
-privately rather than filing a public issue.
+Report security issues privately rather than opening a public issue.
 
 - Email: kiren@fantasymetals.com
-- Subject prefix: `[security] pi-until-done — <short description>`
-- Expected response time: within 7 days
+- Subject: `[security] pi-until-done — <short description>`
+- Expected initial response: within 7 days
 
-Please include:
+Include the `pi-until-done`, exact Pi, Node, and mise versions; a minimal reproduction; likely impact; and redacted logs or session entries. Never send API keys or unredacted credentials.
 
-1. The version (`pi-until-done` version + Pi version + Bun + mise).
-2. A reproducible example or proof of concept.
-3. The impact you observed and the impact you believe is possible.
-4. Any logs or session JSONL excerpts that help — but redact secrets.
+## Runtime threat model
 
-A coordinated-disclosure release will follow once a fix is ready.
+`/until-done` is a continuation-loop extension with model and subprocess authority already granted through Pi. It adds these behaviors:
 
-## Threat model
+- typed goal events appended to the active Pi session branch;
+- a composed North Star reminder in `before_agent_start`;
+- automatic continuation only after `agent_settled`;
+- verification routed through `mise` and Node subprocesses;
+- an LLM judge request before every completion transition;
+- optional `.until-done/tasks.yaml` and `.until-done/distilled.md` exports.
 
-`/until-done` is a continuation-loop extension. Its core trust assumption
-is that **the active model is the judge**. The extension itself does not
-introduce new attack surface beyond what Pi already exposes via its
-built-in tools (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`).
+The judge sees the goal, done criteria, verification command, and executor-cited evidence. Cross-model judging is recommended; same-model judging requires explicit opt-in. A `continue` verdict blocks completion. Unparseable or unavailable judge infrastructure fails open only with a visible warning evidence entry. There is no no-judge setup mode.
 
-What the extension does:
+The extension does not replace the system prompt, disable active tools, maintain a side database, emit telemetry, auto-update itself, or read credentials directly. Judge traffic is sent by Pi's configured model provider through Pi's model runtime.
 
-- Persists goal state via `pi.appendEntry` (Pi session JSONL only).
-- Appends a goal reminder to the system prompt via `before_agent_start`
-  (never replaces).
-- Auto-prepends `mise exec --` to `verifyCommand` so all shell calls go
-  through mise's pinned tool versions.
-- Spawns mise as a subprocess for CI checks (`mise tasks ls --json`,
-  `mise run <verb>`, `mise exec -- <cmd>`).
-- Optionally writes `.until-done/tasks.yaml` and `.until-done/distilled.md`
-  inside the project's cwd.
+## Authorization boundaries
 
-What the extension does NOT do:
+- `askBefore[]` causes matching shell invocations to require interactive confirmation.
+- Goal, done criteria, verification command, and ask-before rules are locked after `until_done_set`; replanning cannot change them.
+- Turn budgets have a hard ceiling, while pause, block, spin, user-input, and verification gates remain independent.
+- Invalid legacy state is preserved and paused instead of guessed or silently discarded.
+- Tools unavailable in the user's Pi configuration remain unavailable to the extension.
 
-- No network calls of its own (only what Pi/the model invoke).
-- No credential reads, writes, or transmissions.
-- No telemetry, no analytics, no auto-updates.
-- No system-prompt replacement (composes only).
-- No `pi.setActiveTools` (would silently disable user tools — Pi-philosophy
-  violation).
-- No daemons, no background processes outside an active Pi session.
+Prompt injection remains possible when an executor reads untrusted files, pages, logs, or API responses. Treat all such content as data, retain the locked North Star, and require literal verification evidence rather than proxy signals.
 
-## Authorization model
+## Upstream repair automation
 
-- `askBefore[]` is the user-defined gate for sensitive commands. The
-  extension's `tool_call` hook compares each `bash` invocation against this
-  list and triggers a `ctx.ui.confirm` dialog (with 30s timeout) before
-  the command runs. On dismiss/timeout, the tool is blocked.
-- Hard ceiling: turn budget capped at 20000 (with a confirm dialog above
-  500), regardless of what the model requests. The orthogonal gates —
-  spin guard, clean-end nudge, CI-failure → block, user input,
-  `/until-done pause`, and compaction — are turn-independent.
-- Any tool the user has not enabled in Pi cannot be invoked by the
-  extension.
+Compatibility automation separates reasoning from mutation:
 
-## Untrusted content
+- Grok and GLM run in sandboxed gh-aw jobs without repository, npm, or publishing credentials.
+- A repository-only GitHub App can apply only bounded safe-output patches.
+- Workflow, security, App, mise-gate, and immutable contract-test paths are excluded.
+- Runtime patches require independent GLM review plus exact-head Linux, macOS, and Windows CI.
+- Patch size, AI-credit spend, protected branch rules, and two-SHA release sequencing fail closed.
+- npm publishing uses GitHub OIDC trusted publishing and provenance; models cannot publish.
 
-When the model reads untrusted input (web pages, third-party files,
-external APIs), prompt injection is possible against the goal contract.
-Mitigations baked into the extension:
-
-- The North Star (goal, doneCriteria, verifyCommand, askBefore) is
-  **locked** at `until_done_set`; replans cannot change it.
-- The verifiability discipline (injected every turn) refuses
-  proxy-signal completions and requires quoted `verifyCommand` output.
-- The spin-guard blocks the loop when a turn produces no progress
-  signals — preventing models from "agreeing" to stop.
+Compiler-generated workflows and action/container references are pinned and checked by `mise run workflows`. Two documented gh-aw v0.82.14 generator defects are patched deterministically before actionlint; remove those workarounds when a pinned compiler release fixes them.
 
 ## Supported versions
 
-Only the latest minor version of `pi-until-done` is supported. Update via
-`pi update pi-until-done` or `npm install -g pi-until-done@latest`.
+Support is strict lockstep rather than a floating range. `pi-until-done@0.3.0` supports `@earendil-works/pi-{coding-agent,ai,tui}@0.81.1` on Node `>=22.19.0`. Older package releases remain available for their corresponding Pi release. See [`compatibility/pi.json`](compatibility/pi.json).

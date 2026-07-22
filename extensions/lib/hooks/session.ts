@@ -1,7 +1,7 @@
 import type {
 	ExtensionAPI,
 	ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
 	COMPACTION_CONTEXT_CUSTOM_TYPE,
 	STATUS_KEY,
@@ -36,7 +36,7 @@ const warnGoalCollision = (pi: ExtensionAPI, ctx: ExtensionContext): void => {
 
 const onSessionStart = (pi: ExtensionAPI, store: Store) => {
 	pi.on("session_start", async (event, ctx) => {
-		reconstructFromSession(store, ctx);
+		reconstructFromSession(pi, store, ctx);
 		refreshStatus(store, ctx);
 		refreshWidget(store, ctx);
 		handleStartupFlag(pi, ctx, event.reason);
@@ -94,7 +94,7 @@ const onSessionCompact = (pi: ExtensionAPI, store: Store) => {
 
 const onSessionTree = (pi: ExtensionAPI, store: Store) => {
 	pi.on("session_tree", async (_event, ctx) => {
-		reconstructFromSession(store, ctx);
+		reconstructFromSession(pi, store, ctx);
 		refreshStatus(store, ctx);
 		refreshWidget(store, ctx, true);
 	});

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { fauxAssistantMessage, fauxToolCall } from "@mariozechner/pi-ai";
+import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import {
 	makeJudgeModel,
 	makeNorthStar,
@@ -233,6 +233,41 @@ describe("until_done_complete with judgeModel — judge rejects (Ralph-loop conv
 });
 
 describe("until_done_complete with judgeModel — malformed judge response", () => {
+	test("rejects prose-wrapped JSON as non-strict output", async () => {
+		rt = await createTestRuntime({ withJudge: true });
+		seedActiveWithJudge(rt);
+		rt.setJudgeLLM([
+			fauxAssistantMessage(
+				'Judgment: {"verdict":"continue","reason":"more work"}',
+				{ stopReason: "stop" },
+			),
+		]);
+		await driveToolCall(rt, "until_done_complete", { evidence: "tests pass" });
+		expect(rt.store.state.status).toBe("done");
+		expect(
+			rt.store.state.evidence.some((entry) =>
+				entry.includes("judge response could not be parsed"),
+			),
+		).toBe(true);
+	});
+
+	test("requires a non-empty reason in strict JSON", async () => {
+		rt = await createTestRuntime({ withJudge: true });
+		seedActiveWithJudge(rt);
+		rt.setJudgeLLM([
+			fauxAssistantMessage('{"verdict":"continue","reason":""}', {
+				stopReason: "stop",
+			}),
+		]);
+		await driveToolCall(rt, "until_done_complete", { evidence: "tests pass" });
+		expect(rt.store.state.status).toBe("done");
+		expect(
+			rt.store.state.evidence.some((entry) =>
+				entry.includes("judge response could not be parsed"),
+			),
+		).toBe(true);
+	});
+
 	test("judge returns non-JSON → fail-open with warning evidence; goal still completes", async () => {
 		rt = await createTestRuntime({ withJudge: true });
 		seedActiveWithJudge(rt);

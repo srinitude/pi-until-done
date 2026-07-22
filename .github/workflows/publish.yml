@@ -76,13 +76,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
           persist-credentials: false
 
       - name: Install mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
         with:
           version: 2026.5.0
           install: true
@@ -105,7 +105,7 @@ jobs:
       # NO registry-url — that injects a placeholder NODE_AUTH_TOKEN and
       # fights the OIDC handshake, returning 404-not-found.
       - name: Set up Node 24 (ships npm 11.x for OIDC trusted publishing)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
 
