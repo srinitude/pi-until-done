@@ -24,6 +24,10 @@ async function patchCopilotMcpGateway(name) {
 	const markers = [
 		["openrouter.ai,packagecloud.io", "openrouter.ai,awmg-mcpg,packagecloud.io"],
 		['"openrouter.ai","packagecloud.io"', '"openrouter.ai","awmg-mcpg","packagecloud.io"'],
+		[
+			"set +o histexpand; export PATH=",
+			'set +o histexpand; export NO_PROXY="${NO_PROXY:+$NO_PROXY,}awmg-mcpg"; export no_proxy="$NO_PROXY"; export PATH=',
+		],
 	];
 	let patched = source;
 	for (const [oldValue, newValue] of markers) {

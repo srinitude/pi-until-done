@@ -35,6 +35,7 @@ describe("Pi lockstep agentic workflows", () => {
 			expect(source).not.toContain("COPILOT_PROVIDER_WIRE_MODEL");
 			expect(lock).toContain("openrouter.ai,awmg-mcpg,packagecloud.io");
 			expect(lock).toContain('"openrouter.ai","awmg-mcpg","packagecloud.io"');
+			expect(lock).toContain('NO_PROXY="${NO_PROXY:+$NO_PROXY,}awmg-mcpg"');
 			expect(lock).toContain("COPILOT_MODEL: x-ai/grok-4.5");
 			expect(lock).not.toContain("COPILOT_MODEL: gpt-5.4");
 		}
@@ -117,7 +118,7 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("types: [opened, reopened, edited]");
 		expect(source).toContain("roles: all");
 		expect(source).toContain("x-ai/grok-4.5");
-		expect(source).toContain("max-turns: 1");
+		expect(source).toContain("max-turns: 8");
 		expect(source).toContain("max-continuations: 16");
 		expect(source).toContain("at most 25");
 		expect(source).toContain("TRIAGE_MAX_ITEMS");
