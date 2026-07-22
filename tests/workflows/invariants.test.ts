@@ -109,7 +109,9 @@ describe("Pi lockstep agentic workflows", () => {
 		);
 		expect(mise).toContain('run = "node .github/scripts/verify-workflows.mjs"');
 		expect(runner).toContain('run("gh-aw", ["compile", "--strict"])');
-		expect(runner).toContain('canRun("docker", ["info"])');
+		expect(runner).toContain(
+			'process.platform !== "win32" && canRun("docker", ["info"])',
+		);
 		expect(runner).toContain("Docker unavailable; strict gh-aw compile completed");
 	});
 

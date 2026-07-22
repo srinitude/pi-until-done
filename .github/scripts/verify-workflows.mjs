@@ -41,7 +41,7 @@ function verifyGeneratedFiles() {
 
 run("gh-aw", ["compile", "--strict"]);
 run(process.execPath, [".github/scripts/patch-gh-aw-lock.mjs"]);
-if (canRun("docker", ["info"])) run("gh-aw", ["lint"]);
+if (process.platform !== "win32" && canRun("docker", ["info"])) run("gh-aw", ["lint"]);
 else console.log("Docker unavailable; strict gh-aw compile completed (generated lint runs on Docker-capable matrix jobs).");
 run("actionlint", await conventionalWorkflows());
 run("bun", ["test", "tests/workflows"]);
