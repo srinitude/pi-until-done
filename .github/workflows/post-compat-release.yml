@@ -68,9 +68,11 @@ jobs:
           version=$(jq -r .version package.json)
           pi=$(jq -r .piVersion compatibility/pi.json)
           latest=$(mise exec -- npm view pi-until-done version)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "pi=$pi" >> "$GITHUB_OUTPUT"
-          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$version"
+            echo "pi=$pi"
+            echo "latest=$latest"
+          } >> "$GITHUB_OUTPUT"
           order=$(mise exec -- node -e 'const [a,b]=process.argv.slice(1).map(v=>v.split(".").map(Number)); console.log(a.some((n,i)=>n!==b[i]) ? (a.findIndex((n,i)=>n!==b[i])>=0 && a[a.findIndex((n,i)=>n!==b[i])] > b[a.findIndex((n,i)=>n!==b[i])] ? "newer" : "older") : "equal")' "$version" "$latest")
           if [ "$order" = "older" ]; then echo "Package version regressed"; exit 1; fi
           if [ "$order" = "newer" ]; then
