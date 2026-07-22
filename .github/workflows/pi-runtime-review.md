@@ -10,6 +10,15 @@ permissions:
   contents: read
   pull-requests: read
 model: openai/glm-5.2
+models:
+  providers:
+    openai:
+      models:
+        glm-5.2:
+          cost:
+            input: "1.1268e-06"
+            output: "3.9438e-06"
+            cache_read: "2.817e-07"
 engine:
   id: opencode
   version: "1.2.14"

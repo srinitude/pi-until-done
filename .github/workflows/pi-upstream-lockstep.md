@@ -13,6 +13,15 @@ permissions:
   pull-requests: read
   issues: read
 model: x-ai/grok-4.5
+models:
+  providers:
+    x-ai:
+      models:
+        grok-4.5:
+          cost:
+            input: "2.27e-06"
+            output: "6.8e-06"
+            cache_read: "3.4e-07"
 engine:
   id: copilot
   version: "1.0.71"

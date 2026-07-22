@@ -17,6 +17,8 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("max-daily-ai-credits: 500");
 		expect(source).toContain("max-ai-credits: 25");
 		expect(source).toContain('version: "1.0.71"');
+		expect(source).toContain('input: "2.27e-06"');
+		expect(source).toContain('output: "6.8e-06"');
 		expect(source).toContain("secrets.OPENROUTER_API_KEY");
 		expect(source).not.toContain("GITHUB_OPENROUTER_API_KEY");
 		expect(source).toContain("https://openrouter.ai/api/v1");
@@ -45,6 +47,8 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("id: opencode");
 		expect(source).toContain("openai/glm-5.2");
 		expect(source).toContain('version: "1.2.14"');
+		expect(source).toContain('input: "1.1268e-06"');
+		expect(source).toContain('output: "3.9438e-06"');
 		expect(source).toContain("https://api.z.ai/api/coding/paas/v4");
 		expect(source).toContain("OPENAI_BASE_URL");
 		expect(source).toContain("reasoningEffort");
