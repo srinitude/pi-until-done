@@ -8,10 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Grok workflows now preserve explicit high reasoning through Copilot CLI
-  1.0.71's Responses adapter while keeping `x-ai/grok-4.5` as the wire model.
-  The raw BYOK identifier was rejected before execution when paired with
-  `--effort=high`.
+- Grok workflows now verify OpenRouter's mandatory high-reasoning default
+  before execution. Copilot CLI 1.0.71 rejects an explicit effort for raw BYOK
+  model identifiers, so the workflows use the verified provider default.
 
 ## [0.3.1] — 2026-07-22
 

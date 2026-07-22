@@ -26,13 +26,11 @@ engine:
   id: copilot
   version: "1.0.71"
   max-continuations: 16
-  args: ["--effort=high"]
   env:
     COPILOT_PROVIDER_BASE_URL: https://openrouter.ai/api/v1
     COPILOT_PROVIDER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
     COPILOT_PROVIDER_TYPE: openai
-    COPILOT_PROVIDER_WIRE_API: responses
-    COPILOT_PROVIDER_WIRE_MODEL: x-ai/grok-4.5
+    COPILOT_PROVIDER_WIRE_API: completions
     COPILOT_PROVIDER_MAX_PROMPT_TOKENS: "500000"
     COPILOT_PROVIDER_MAX_OUTPUT_TOKENS: "131072"
 strict: true
@@ -46,6 +44,17 @@ network:
     - github
     - node
     - openrouter.ai
+pre-steps:
+  - name: Verify Grok high-reasoning default
+    shell: bash
+    run: |
+      set -euo pipefail
+      curl -fsSL https://openrouter.ai/api/v1/models | jq -e '
+        .data[] | select(.id == "x-ai/grok-4.5") |
+        .reasoning.mandatory == true and
+        .reasoning.default_effort == "high" and
+        (.reasoning.supported_efforts | index("high") != null)
+      ' >/dev/null
 post-steps:
   - name: Enforce deterministic patch budget
     shell: bash

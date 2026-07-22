@@ -11,7 +11,7 @@ describe("Pi lockstep agentic workflows", () => {
 	test("uses Grok 4.5 high as the bounded primary repair model", async () => {
 		const source = await workflow("pi-upstream-lockstep.md");
 		expect(source).toContain("x-ai/grok-4.5");
-		expect(source).toContain("--effort=high");
+		expect(source).not.toContain("--effort=high");
 		expect(source).toContain("max-turns: 3");
 		expect(source).toContain("max-continuations: 16");
 		expect(source).toContain("max-ai-credits: 475");
@@ -25,16 +25,18 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("https://openrouter.ai/api/v1");
 	});
 
-	test("adapts explicit Grok high effort to its Responses wire model", async () => {
+	test("fails closed unless Grok defaults to mandatory high reasoning", async () => {
 		for (const name of ["pi-upstream-lockstep", "issue-triage"]) {
 			const source = await workflow(`${name}.md`);
 			const lock = await workflow(`${name}.lock.yml`);
-			expect(source).toContain("COPILOT_PROVIDER_WIRE_API: responses");
-			expect(source).toContain("COPILOT_PROVIDER_WIRE_MODEL: x-ai/grok-4.5");
-			expect(source).toContain("--effort=high");
-			expect(lock).toContain("COPILOT_MODEL: gpt-5.4-mini");
-			expect(lock).not.toContain("COPILOT_MODEL: gpt-5.4\n");
-			expect(lock).not.toContain("COPILOT_MODEL: x-ai/grok-4.5");
+			expect(source).toContain('default_effort == "high"');
+			expect(source).toContain(".reasoning.mandatory == true");
+			expect(source).toContain("COPILOT_PROVIDER_WIRE_API: completions");
+			expect(source).not.toContain("COPILOT_PROVIDER_WIRE_MODEL");
+			expect(lock).toContain("openrouter.ai,awmg-mcpg,packagecloud.io");
+			expect(lock).toContain('"openrouter.ai","awmg-mcpg","packagecloud.io"');
+			expect(lock).toContain("COPILOT_MODEL: x-ai/grok-4.5");
+			expect(lock).not.toContain("COPILOT_MODEL: gpt-5.4");
 		}
 	});
 

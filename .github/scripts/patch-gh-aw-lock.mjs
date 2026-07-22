@@ -18,17 +18,21 @@ async function patchCopilotByokOutput(name) {
 	);
 }
 
-async function patchCopilotReasoningAdapter(name) {
+async function patchCopilotMcpGateway(name) {
 	const path = new URL(name, workflows);
 	const source = await readFile(path, "utf8");
-	const wireModel = "COPILOT_PROVIDER_WIRE_MODEL: x-ai/grok-4.5";
-	const oldValue = "COPILOT_MODEL: x-ai/grok-4.5";
-	const newValue = "COPILOT_MODEL: gpt-5.4-mini";
-	if (!source.includes(wireModel)) throw new Error("Grok wire model marker not found");
-	if (!source.includes(oldValue) && !source.includes(newValue)) {
-		throw new Error("Copilot reasoning adapter marker not found");
+	const markers = [
+		["openrouter.ai,packagecloud.io", "openrouter.ai,awmg-mcpg,packagecloud.io"],
+		['"openrouter.ai","packagecloud.io"', '"openrouter.ai","awmg-mcpg","packagecloud.io"'],
+	];
+	let patched = source;
+	for (const [oldValue, newValue] of markers) {
+		if (!patched.includes(oldValue) && !patched.includes(newValue)) {
+			throw new Error(`MCP gateway marker not found: ${oldValue}`);
+		}
+		patched = patched.replaceAll(oldValue, newValue);
 	}
-	await writeFile(path, source.replaceAll(oldValue, newValue));
+	await writeFile(path, patched);
 }
 
 async function patchOpenCodeProvider() {
@@ -76,7 +80,7 @@ for (const name of [
 	"pi-upstream-lockstep.lock.yml",
 ]) {
 	await patchCopilotByokOutput(name);
-	await patchCopilotReasoningAdapter(name);
+	await patchCopilotMcpGateway(name);
 }
 await patchOpenCodeProvider();
 await patchDisabledDetectionOutput();
