@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { STATUS_KEY } from "../constants";
 import type { Store } from "../store";
 import { STATUS, TITLE_PREFIX } from "../strings";

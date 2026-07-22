@@ -221,7 +221,7 @@ Any `extensions/**` change starts a separate read-only gh-aw review using:
 - model `openai/glm-5.2`;
 - Z.AI Coding Plan endpoint `https://api.z.ai/api/coding/paas/v4`;
 - reasoning `xhigh`;
-- repository secret `ZAI_CODING_PLAN_API_KEY` containing the personal Coding Plan key;
+- repository secret `OPENAI_API_KEY` containing the personal Z.AI Coding Plan key, as required by gh-aw's universal OpenCode provider contract;
 - network access limited to required GitHub/AWF and `api.z.ai` endpoints.
 
 OpenCode is used because Z.AI lists it as a supported Coding Plan tool. The Coding Plan key is not routed through Copilot CLI. The generated OpenCode provider configuration must demonstrably forward `reasoning_effort: xhigh`; silent fallback to a default effort fails preflight. A strict compilation and live tool/structured-output smoke test must pass before auto-merge is enabled.

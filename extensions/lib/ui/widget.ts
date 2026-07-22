@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { WIDGET_KEY } from "../constants";
 import type { Store } from "../store";
 import { WIDGET } from "../strings";

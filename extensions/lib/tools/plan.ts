@@ -1,7 +1,7 @@
 import type {
 	ExtensionAPI,
 	ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import type { Static } from "typebox";
 import { PlanParams } from "../schemas/plan";
 import { persist, type Store } from "../store";
@@ -27,6 +27,26 @@ const validateDeps = (tasks: Task[]): string | undefined => {
 	return undefined;
 };
 
+const persistPlan = (
+	pi: ExtensionAPI,
+	store: Store,
+	params: PlanInput,
+	first: Task | undefined,
+): void => {
+	persist(
+		pi,
+		store,
+		"plan",
+		{
+			tasks: params.tasks,
+			currentTaskId: first?.id,
+			planComplete: true,
+			phase: first?.phase ?? store.state.phase,
+		},
+		`plan with ${params.tasks.length} tasks`,
+	);
+};
+
 const executePlan = async (
 	pi: ExtensionAPI,
 	store: Store,
@@ -39,19 +59,8 @@ const executePlan = async (
 	}
 	const err = validateDeps(params.tasks);
 	if (err) return refused(err, "unknown_dep");
-	const first = params.tasks.find((t) => t.dependencies.length === 0);
-	persist(
-		pi,
-		store,
-		"plan",
-		{
-			tasks: params.tasks,
-			currentTaskId: first?.id,
-			planComplete: true,
-			phase: first?.phase ?? s.phase,
-		},
-		`plan with ${params.tasks.length} tasks`,
-	);
+	const first = params.tasks.find((task) => task.dependencies.length === 0);
+	persistPlan(pi, store, params, first);
 	writeTasksYaml(ctx.cwd, store.state);
 	return ok(
 		TOOL_RESULTS.planAccepted(params.tasks.length, first?.id ?? "(none)"),

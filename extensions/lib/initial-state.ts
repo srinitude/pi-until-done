@@ -21,6 +21,14 @@ export const initialState = (): GoalState => ({
 	cleanEndPrompts: 0,
 	goalType: "ticket",
 	surfaces: [],
+	autopilotEnabled: false,
+	judgeDefault: null,
+});
+
+export const resetGoalState = (previous: GoalState): GoalState => ({
+	...initialState(),
+	autopilotEnabled: previous.autopilotEnabled,
+	judgeDefault: previous.judgeDefault,
 });
 
 export const initialStats = (): Stats => ({

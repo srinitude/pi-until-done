@@ -1,7 +1,7 @@
 import type {
 	ExtensionAPI,
 	ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import { renderFailureBlock, renderHeadline, runCi } from "../ci";
 import { persist, type Store } from "../store";
 import { CI_LABELS } from "../strings";

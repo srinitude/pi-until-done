@@ -1,7 +1,7 @@
 import type {
 	ExtensionAPI,
 	ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import type { Static } from "typebox";
 import { detectCycle } from "../cycle";
 import { ReplanParams } from "../schemas/plan";

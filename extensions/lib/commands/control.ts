@@ -1,12 +1,12 @@
 import type {
 	ExtensionAPI,
 	ExtensionCommandContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
 	HARD_BUDGET_CEILING,
 	LARGE_BUDGET_CONFIRM_THRESHOLD,
 } from "../constants";
-import { initialState } from "../initial-state";
+import { resetGoalState } from "../initial-state";
 import { persist, type Store } from "../store";
 import { DIALOGS, NOTIFY } from "../strings";
 import { refreshStatus } from "../ui/status-line";
@@ -31,24 +31,34 @@ export const cmdPause = async (
 	refreshWidget(store, ctx, true);
 };
 
+const confirmDoneResume = async (
+	store: Store,
+	ctx: ExtensionCommandContext,
+): Promise<boolean> =>
+	store.state.status !== "done" ||
+	!ctx.hasUI ||
+	ctx.ui.confirm(
+		DIALOGS.resumeDoneTitle,
+		DIALOGS.resumeDoneMessage(store.state.goal),
+	);
+
+const resumeMessage = (goal: string, challengingDone: boolean): string =>
+	challengingDone
+		? `User has disputed the previous /until-done_complete. Resume work on goal: ${goal}. New evidence is required before re-completion.`
+		: `Resume work on the standing /until-done goal: ${goal}`;
+
 export const cmdResume = async (
 	pi: ExtensionAPI,
 	store: Store,
 	ctx: ExtensionCommandContext,
 ): Promise<void> => {
-	const s = store.state;
-	if (s.status === "cleared" || !s.goal) {
+	const state = store.state;
+	if (state.status === "cleared" || !state.goal) {
 		ctx.ui.notify(NOTIFY.nothingToResume, "warning");
 		return;
 	}
-	const challengingDone = s.status === "done";
-	if (challengingDone && ctx.hasUI) {
-		const ok = await ctx.ui.confirm(
-			DIALOGS.resumeDoneTitle,
-			DIALOGS.resumeDoneMessage(s.goal),
-		);
-		if (!ok) return;
-	}
+	if (!(await confirmDoneResume(store, ctx))) return;
+	const challengingDone = state.status === "done";
 	persist(
 		pi,
 		store,
@@ -61,12 +71,8 @@ export const cmdResume = async (
 		},
 		challengingDone ? "resumed after disputed completion" : undefined,
 	);
-	ctx.ui.notify(NOTIFY.resumed(s.goal), "info");
-	pi.sendUserMessage(
-		challengingDone
-			? `User has disputed the previous /until-done_complete. Resume work on goal: ${s.goal}. New evidence is required before re-completion.`
-			: `Resume work on the standing /until-done goal: ${s.goal}`,
-	);
+	ctx.ui.notify(NOTIFY.resumed(state.goal), "info");
+	pi.sendUserMessage(resumeMessage(state.goal, challengingDone));
 	refreshStatus(store, ctx);
 	refreshWidget(store, ctx);
 };
@@ -87,7 +93,7 @@ export const cmdCancel = async (
 			)
 		: true;
 	if (!ok) return;
-	persist(pi, store, "cancel", initialState(), "user cancelled");
+	persist(pi, store, "cancel", resetGoalState(store.state), "user cancelled");
 	ctx.ui.notify(NOTIFY.cancelled, "info");
 	refreshStatus(store, ctx);
 	refreshWidget(store, ctx, true);
@@ -124,13 +130,14 @@ export const cmdBudget = async (
 };
 
 export const cmdAutopilot = async (
-	_pi: ExtensionAPI,
+	pi: ExtensionAPI,
 	store: Store,
 	ctx: ExtensionCommandContext,
 ): Promise<void> => {
-	store.autopilotEnabled = !store.autopilotEnabled;
+	const autopilotEnabled = !store.state.autopilotEnabled;
+	persist(pi, store, "preference", { autopilotEnabled }, "autopilot toggled");
 	ctx.ui.notify(
-		store.autopilotEnabled ? NOTIFY.autopilotEnabled : NOTIFY.autopilotDisabled,
+		autopilotEnabled ? NOTIFY.autopilotEnabled : NOTIFY.autopilotDisabled,
 		"warning",
 	);
 };

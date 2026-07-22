@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { Static } from "typebox";
 import { HARD_BUDGET_CEILING } from "../constants";
 import { routeThroughMise } from "../mise";
@@ -46,7 +46,7 @@ const resolveJudge = (
 ): { judgeModel?: NorthStar["judgeModel"]; sameModelJudge?: boolean } => {
 	if (params.judgeModel) return { judgeModel: params.judgeModel };
 	if (params.sameModelJudge) return { sameModelJudge: true };
-	const fallback = store.judgeDefault;
+	const fallback = store.state.judgeDefault;
 	if (!fallback) return {};
 	if (fallback.mode === "same") return { sameModelJudge: true };
 	return {

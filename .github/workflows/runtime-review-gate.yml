@@ -1,0 +1,71 @@
+name: Conditional GLM runtime review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: runtime-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Conditional GLM runtime review
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Classify patch
+        id: patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=$(gh api --paginate "repos/$GH_REPO/pulls/$PR_NUMBER/files" --jq '.[].filename')
+          if grep -q '^extensions/' <<< "$files"; then
+            echo "runtime=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "runtime=false" >> "$GITHUB_OUTPUT"
+            echo "No runtime files changed; GLM review is not required"
+          fi
+
+      - name: Require exact-head GLM approval
+        if: steps.patch.outputs.runtime == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            run=$(gh run list --workflow pi-runtime-review.lock.yml --commit "$HEAD_SHA" --event pull_request --limit 1 --json status,conclusion --jq '.[0] // {}')
+            status=$(jq -r '.status // ""' <<< "$run")
+            conclusion=$(jq -r '.conclusion // ""' <<< "$run")
+            state=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER/reviews" --paginate | jq -r --arg sha "$HEAD_SHA" '[.[] | select(.user.login == "github-actions[bot]" and .commit_id == $sha)] | sort_by(.id) | last | .state // ""')
+            if [ "$state" = "APPROVED" ]; then
+              echo "GLM approved exact head $HEAD_SHA"
+              exit 0
+            fi
+            if [ "$state" = "CHANGES_REQUESTED" ]; then
+              echo "GLM requested changes on exact head $HEAD_SHA"
+              exit 1
+            fi
+            if [ "$status" = "completed" ] && [ "$conclusion" != "success" ]; then
+              echo "GLM workflow failed closed: $conclusion"
+              exit 1
+            fi
+            if [ "$status" = "completed" ] && [ "$conclusion" = "success" ]; then
+              echo "GLM workflow completed without exact-head approval"
+              exit 1
+            fi
+            echo "[$attempt/60] waiting for GLM review on $HEAD_SHA"
+            sleep 30
+          done
+          echo "Timed out waiting for GLM review"
+          exit 1

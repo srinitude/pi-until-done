@@ -1,7 +1,7 @@
 import type {
 	ExtensionAPI,
 	ExtensionCommandContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import type { Store } from "../store";
 import { COMMAND_DESCRIPTION } from "../strings";
 import { cmdAsk } from "./ask";
@@ -64,6 +64,26 @@ const looksLikeJudgeArg = (rest: string[]): boolean => {
 	return head.includes("/");
 };
 
+const dispatchZero = async (
+	pi: ExtensionAPI,
+	store: Store,
+	ctx: ExtensionCommandContext,
+	head: string,
+): Promise<boolean> => {
+	if (head === "status") cmdStatus(store, ctx);
+	else if (head === "pause") await cmdPause(pi, store, ctx);
+	else if (head === "resume") await cmdResume(pi, store, ctx);
+	else if (head === "cancel") await cmdCancel(pi, store, ctx);
+	else if (head === "detail") await cmdDetail(store, ctx);
+	else if (head === "tasks") cmdTasks(store, ctx);
+	else if (head === "plan") cmdPlanPath(ctx);
+	else if (head === "northstar") cmdNorthStar(store, ctx);
+	else if (head === "replan-log") cmdReplanLog(store, ctx);
+	else if (head === "autopilot") await cmdAutopilot(pi, store, ctx);
+	else return false;
+	return true;
+};
+
 const dispatch = async (
 	pi: ExtensionAPI,
 	store: Store,
@@ -73,17 +93,12 @@ const dispatch = async (
 	args: string,
 ): Promise<void> => {
 	if (!args || (head === "help" && rest.length === 0)) return cmdHelp(ctx);
-	if (ZERO_ARG_SUBCOMMANDS.has(head) && rest.length === 0) {
-		if (head === "status") return cmdStatus(store, ctx);
-		if (head === "pause") return cmdPause(pi, store, ctx);
-		if (head === "resume") return cmdResume(pi, store, ctx);
-		if (head === "cancel") return cmdCancel(pi, store, ctx);
-		if (head === "detail") return cmdDetail(store, ctx);
-		if (head === "tasks") return cmdTasks(store, ctx);
-		if (head === "plan") return cmdPlanPath(ctx);
-		if (head === "northstar") return cmdNorthStar(store, ctx);
-		if (head === "replan-log") return cmdReplanLog(store, ctx);
-		if (head === "autopilot") return cmdAutopilot(pi, store, ctx);
+	if (
+		ZERO_ARG_SUBCOMMANDS.has(head) &&
+		rest.length === 0 &&
+		(await dispatchZero(pi, store, ctx, head))
+	) {
+		return;
 	}
 	if (head === "budget" && rest.length === 1 && isPositiveInteger(rest[0])) {
 		return cmdBudget(pi, store, ctx, rest[0]);

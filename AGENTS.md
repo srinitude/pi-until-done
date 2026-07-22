@@ -37,7 +37,7 @@ You operate strictly in **TDD-first RED → GREEN → REFACTOR**:
 | 2. Local developer suite | `mise run check` (typecheck + lint + format, parallel) |
 | 3. Local release-readiness suite | `mise run ci` (full) + `mise run release-ready` |
 | 4. Affected-target execution | not yet — current scope is small enough to run full each time. **Documented fallback**: full validation is the safe path until the codebase grows. Revisit at >150 files. |
-| 5. Deterministic caching | not yet — `mise.lock` pins tool versions; bun caches resolution. **Documented fallback**: deterministic no-cache is acceptable at current scope. |
+| 5. Deterministic caching | `mise.lock` pins Bun, Node, actionlint, and gh-aw artifacts; Bun caches dependency resolution. Deterministic no-cache remains the safe fallback. |
 | 6. Safe parallel execution | `[settings] jobs = 4` in `mise.toml`; `check` and `ci` use `depends`. |
 | 7. Matching GitHub workflow | `.github/workflows/ci.yml` — runs `mise run ci` on every push/PR. |
 | 8. Local ↔ GitHub parity | both invoke the same `mise run ci` against the same `mise.toml`; no duplicated rules. |
@@ -118,7 +118,7 @@ guarantee to local-developer-driven releases.
 - `session_compact` re-anchors goal context as a `CustomMessageEntry`
   (`display:false`) on the next turn after compaction. The
   `session_before_compact` hook is intentionally NOT subscribed —
-  pi-mono's `SessionBeforeCompactResult` has no `customInstructions`
+  Pi 0.81's `SessionBeforeCompactResult` has no `customInstructions`
   slot, so any mutation there is a no-op. Re-anchor through
   `session_compact` instead, never via `before_compact` mutation.
 - No system-prompt replacement, no side-database, no hidden state. State

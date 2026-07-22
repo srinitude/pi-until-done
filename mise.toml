@@ -14,8 +14,10 @@
 #   mise tasks ls --json — machine-readable; what until-done's runtime queries
 
 [tools]
-bun = "latest"
-node = "lts"
+actionlint = "1.7.12"
+bun = "1.2.23"
+node = "22.19.0"
+"ubi:github/gh-aw" = "0.82.14"
 
 [settings]
 # Required for some experimental features (monorepo target paths, age secrets).
@@ -56,9 +58,38 @@ run = "bun x tsc --noEmit --pretty"
 description = "Run bun's test runner against extensions/ and tests/"
 run = "bun test --rerun-each=1 tests extensions"
 
+[tasks.test-node]
+description = "Exercise production subprocess and mise discovery under Pi's official Node runtime"
+run = """
+node tests/node/runner.mjs
+node tests/node/mise-tasks.mjs
+node tests/node/package-load.mjs
+node tests/node/pack-manifest.mjs
+node tests/node/packed-install.mjs
+"""
+
 [tasks.build]
 description = "No bundling — Pi loads .ts directly. This task verifies the runtime entrypoint resolves on every OS."
 run = "bun tests/build-smoke.ts"
+
+[tasks.structure]
+description = "Enforce production file, construct, and nesting limits"
+run = "node tests/structure/check.mjs"
+
+[tasks.workflows]
+description = "Compile, patch, lint, and test trusted workflow policy"
+run = """
+gh-aw compile --strict
+node .github/scripts/patch-gh-aw-lock.mjs
+gh-aw lint
+find .github/workflows -name '*.yml' ! -name '*.lock.yml' -print0 | xargs -0 actionlint
+bun test tests/workflows
+if ! git diff --quiet -- .github/workflows/*.lock.yml .github/workflows/agentics-maintenance.yml; then
+  echo 'Compiled gh-aw workflows are stale. Run mise run workflows and commit them.'
+  git diff --stat -- .github/workflows/*.lock.yml .github/workflows/agentics-maintenance.yml
+  exit 1
+fi
+"""
 
 # ---- Convenience composites ------------------------------------------------
 
@@ -67,8 +98,18 @@ description = "Fast pre-commit gate — typecheck + lint + format in parallel"
 depends = ["typecheck", "lint", "format"]
 
 [tasks.ci]
-description = "Full CI suite (everything until-done's runtime CI runs on agent_end)"
-depends = ["typecheck", "lint", "format", "compile", "test", "build"]
+description = "Full CI suite (everything until-done's runtime CI runs on agent_settled)"
+depends = [
+  "typecheck",
+  "lint",
+  "format",
+  "compile",
+  "test",
+  "test-node",
+  "build",
+  "structure",
+  "workflows",
+]
 depends_post = ["fmt-toml"]
 
 [tasks.release-ready]
@@ -106,6 +147,10 @@ rm -rf node_modules/.cache
 # ---- npm publish (release surface) -----------------------------------------
 # Every publish path runs `mise run release-ready` first (full CI + parity
 # checks) and refuses to publish from a dirty working tree.
+
+[tasks."version:patch"]
+description = "Prepare a patch version without committing or tagging"
+run = "npm version patch --no-git-tag-version"
 
 [tasks."publish:dry"]
 description = "Inspect what npm would publish without actually publishing"

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { fauxAssistantMessage, fauxToolCall } from "@mariozechner/pi-ai";
+import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import { makeNorthStar } from "../helpers/factories";
 import {
 	createTestRuntime,
@@ -26,7 +26,19 @@ const seedActive = (runtime: TestRuntime, overrides: Partial<typeof runtime.stor
 	};
 };
 
-describe("agent_start / agent_end (real runtime)", () => {
+describe("agent lifecycle (real runtime)", () => {
+	test("defers continuation policy until agent_settled", async () => {
+		rt = await createTestRuntime({ withUi: true });
+		seedActive(rt, { maxTurns: 1, turnsUsed: 0 });
+		rt.store.progressSignalsThisTurn = 1;
+		await rt.session.extensionRunner.emit({ type: "agent_end", messages: [] });
+		expect(rt.store.state.turnsUsed).toBe(0);
+		expect(rt.store.state.status).toBe("active");
+		await rt.session.extensionRunner.emit({ type: "agent_settled" });
+		expect(rt.store.state.turnsUsed).toBe(1);
+		expect(rt.store.state.status).toBe("paused");
+	});
+
 	test("agent_start resets per-turn counters but does NOT reset userMessagedThisTurn (#1 fix)", async () => {
 		rt = await createTestRuntime({ withUi: true });
 		seedActive(rt);

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { fauxAssistantMessage, fauxToolCall } from "@mariozechner/pi-ai";
+import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import { makeSetParams } from "../helpers/factories";
 import {
 	createTestRuntime,
@@ -40,7 +40,7 @@ describe("/until-done judge <provider>/<modelId>", () => {
 	test("sets a cross-model default for future setups", async () => {
 		rt = await createTestRuntime({ withUi: true, withJudge: true });
 		await rt.prompt("/until-done judge faux-judge/faux-1");
-		expect(rt.store.judgeDefault).toEqual({
+		expect(rt.store.state.judgeDefault).toEqual({
 			mode: "cross",
 			provider: "faux-judge",
 			modelId: "faux-1",
@@ -50,7 +50,7 @@ describe("/until-done judge <provider>/<modelId>", () => {
 	test("warns when the model is not in the registry but still sets the preference", async () => {
 		rt = await createTestRuntime({ withUi: true });
 		await rt.prompt("/until-done judge unknown/not-real");
-		expect(rt.store.judgeDefault).toEqual({
+		expect(rt.store.state.judgeDefault).toEqual({
 			mode: "cross",
 			provider: "unknown",
 			modelId: "not-real",
@@ -66,8 +66,8 @@ describe("/until-done judge <provider>/<modelId>", () => {
 		rt = await createTestRuntime({ withUi: true });
 		await rt.prompt("/until-done judge anthropic-no-slash");
 		// Malformed spec doesn't match the judge dispatch pattern, falls through
-		// to cmdSetup which begins a goal — judgeDefault remains undefined.
-		expect(rt.store.judgeDefault).toBeUndefined();
+		// to cmdSetup which begins a goal — judgeDefault remains unset.
+		expect(rt.store.state.judgeDefault).toBeNull();
 	});
 });
 
@@ -75,15 +75,16 @@ describe("/until-done judge same | clear", () => {
 	test("`same` selects same-model self-judge default", async () => {
 		rt = await createTestRuntime({ withUi: true });
 		await rt.prompt("/until-done judge same");
-		expect(rt.store.judgeDefault).toEqual({ mode: "same" });
+		expect(rt.store.state.judgeDefault).toEqual({ mode: "same" });
+		expect(rt.getStateEntries().at(-1)?.kind).toBe("preference");
 	});
 
 	test("`clear` unsets the default", async () => {
 		rt = await createTestRuntime({ withUi: true });
 		await rt.prompt("/until-done judge same");
-		expect(rt.store.judgeDefault).toEqual({ mode: "same" });
+		expect(rt.store.state.judgeDefault).toEqual({ mode: "same" });
 		await rt.prompt("/until-done judge clear");
-		expect(rt.store.judgeDefault).toBeUndefined();
+		expect(rt.store.state.judgeDefault).toBeNull();
 	});
 });
 

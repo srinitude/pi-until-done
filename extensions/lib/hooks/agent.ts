@@ -1,7 +1,7 @@
 import type {
 	ExtensionAPI,
 	ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import { persist, type Store } from "../store";
 import { WORKING_MESSAGE_PREFIX } from "../strings";
 import type { GoalState } from "../types";
@@ -59,8 +59,8 @@ const handleEndTransitions = async (
 	queueContinuation(pi, store, ctx);
 };
 
-const onAgentEnd = (pi: ExtensionAPI, store: Store) => {
-	pi.on("agent_end", async (_event, ctx) => {
+const onAgentSettled = (pi: ExtensionAPI, store: Store) => {
+	pi.on("agent_settled", async (_event, ctx) => {
 		if (store.state.status !== "active") {
 			store.userMessagedThisTurn = false;
 			refreshStatus(store, ctx);
@@ -79,5 +79,5 @@ const onAgentEnd = (pi: ExtensionAPI, store: Store) => {
 export const registerAgentHooks = (pi: ExtensionAPI, store: Store): void => {
 	registerBeforeAgentStart(pi, store);
 	onAgentStart(pi, store);
-	onAgentEnd(pi, store);
+	onAgentSettled(pi, store);
 };

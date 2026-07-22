@@ -3,23 +3,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	fauxAssistantMessage,
+	fauxProvider,
+	type FauxProviderHandle,
 	type FauxResponseStep,
-	registerFauxProvider,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai/providers/faux";
 import {
-	AuthStorage,
 	createAgentSessionFromServices,
 	createAgentSessionRuntime,
 	type ExtensionAPI,
+	ModelRuntime,
 	SessionManager,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import untilDoneExtension from "../../extensions/until-done";
 import type { Store } from "../../extensions/lib/store";
-import {
-	buildRuntimeFactory,
-	registerJudgeWithRuntime,
-	seedDir,
-} from "./runtime-config";
+import { buildRuntimeFactory, seedDir } from "./runtime-config";
 import { buildUi, createUiTrace, type UiPolicy, type UiTrace } from "./ui-mock";
 
 export type { UiPolicy, UiTrace } from "./ui-mock";
@@ -36,8 +33,8 @@ export interface TestRuntime {
 	store: Store;
 	pi: ExtensionAPI;
 	ui: UiTrace;
-	faux: ReturnType<typeof registerFauxProvider>;
-	judgeFaux: ReturnType<typeof registerFauxProvider> | undefined;
+	faux: FauxProviderHandle;
+	judgeFaux: FauxProviderHandle | undefined;
 	session: Awaited<ReturnType<typeof createAgentSessionFromServices>>["session"];
 	runtimeHost: Awaited<ReturnType<typeof createAgentSessionRuntime>>;
 	setLLM: (responses: FauxResponseStep[]) => void;
@@ -77,15 +74,24 @@ export const createTestRuntime = async (
 	mkdirSync(cwd, { recursive: true });
 	seedDir(cwd, options.seedFiles);
 
-	const faux = registerFauxProvider({ provider: "faux-pi-until-done" });
+	const faux = fauxProvider({ provider: "faux-pi-until-done" });
 	faux.setResponses([fauxAssistantMessage("ok")]);
-	const authStorage = AuthStorage.inMemory();
-	authStorage.setRuntimeApiKey(faux.getModel().provider, "faux-key");
+	const modelRuntime = await ModelRuntime.create({
+		authPath: join(cwd, "auth.json"),
+		modelsPath: null,
+	});
+	modelRuntime.registerNativeProvider(faux.provider);
+	await modelRuntime.setRuntimeApiKey(faux.getModel().provider, "faux-key");
 	const judgeFaux = options.withJudge
-		? registerFauxProvider({ provider: "faux-judge" })
+		? fauxProvider({ provider: "faux-judge" })
 		: undefined;
-	if (judgeFaux)
-		authStorage.setRuntimeApiKey(judgeFaux.getModel().provider, "faux-judge-key");
+	if (judgeFaux) {
+		modelRuntime.registerNativeProvider(judgeFaux.provider);
+		await modelRuntime.setRuntimeApiKey(
+			judgeFaux.getModel().provider,
+			"faux-judge-key",
+		);
+	}
 
 	const trace = createUiTrace();
 	let store: Store | undefined;
@@ -96,7 +102,7 @@ export const createTestRuntime = async (
 	};
 
 	const runtimeHost = await createAgentSessionRuntime(
-		buildRuntimeFactory(authStorage, faux, factory),
+		buildRuntimeFactory(modelRuntime, faux.getModel(), factory),
 		{ cwd, agentDir: cwd, sessionManager: SessionManager.create(cwd) },
 	);
 	await runtimeHost.session.bindExtensions(
@@ -105,7 +111,6 @@ export const createTestRuntime = async (
 
 	if (!store || !captured)
 		throw new Error("untilDoneExtension did not bind store/pi");
-	if (judgeFaux) registerJudgeWithRuntime(captured, judgeFaux);
 
 	return {
 		cwd,
@@ -137,8 +142,6 @@ export const createTestRuntime = async (
 			),
 		dispose: async () => {
 			await runtimeHost.dispose();
-			faux.unregister();
-			judgeFaux?.unregister();
 			if (existsSync(cwd)) rmSync(cwd, { recursive: true, force: true });
 		},
 	};

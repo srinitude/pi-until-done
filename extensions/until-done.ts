@@ -15,7 +15,7 @@
  * `tool_call` only blocks when the user's ask-before list explicitly fires.
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerCommand } from "./lib/commands/router";
 import { registerFlag } from "./lib/flag";
 import { registerHooks } from "./lib/hooks";

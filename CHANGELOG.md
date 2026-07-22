@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-22
+
+### Breaking
+- **Strict Pi lockstep.** This release supports only
+  `@earendil-works/pi-coding-agent`, `pi-ai`, and `pi-tui` `0.81.1` on
+  Node `>=22.19.0`. Older Pi releases remain supported by older
+  `pi-until-done` releases.
+- Replaced the retired `@mariozechner/*` API surface with Pi 0.81's
+  `@earendil-works/*` packages and exact peer dependencies.
+- Production subprocesses now use Node `child_process`; Bun is a pinned
+  development tool, not a runtime requirement.
+
+### Changed
+- Automatic continuation moved from `agent_end` to Pi 0.81's settled
+  `agent_settled` lifecycle event.
+- `before_agent_start` composes with `event.systemPrompt`, and compaction
+  restores the North Star with a hidden session entry on the next turn.
+- Session state now uses schema-v3 typed events and active-branch replay.
+  Valid `0.2.x` state migrates one way without rewriting history; invalid
+  legacy state pauses safely.
+- Autopilot and judge defaults persist as session preferences.
+- Judge responses require strict JSON with a non-empty reason while
+  preserving the visible judge-infrastructure fail-open behavior.
+
+### Added
+- Exact compatibility metadata in `compatibility/pi.json`.
+- Official-Node import, subprocess, mise-discovery, pack-manifest, and
+  packed-install tests.
+- Pinned `mise.lock`, AST-based production structure checks, and strict
+  gh-aw/actionlint workflow policy in the canonical CI gate.
+- Guarded upstream compatibility automation: deterministic package
+  detection, Grok 4.5/high repair, repository-only App mutation, bounded
+  patch and AI-credit budgets, conditional GLM 5.2/xhigh runtime review,
+  protected three-OS CI, two-SHA versioning, and trusted npm publishing.
+
 ## [0.2.2] — 2026-05-04
 
 ### Fixed

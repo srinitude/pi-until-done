@@ -3,8 +3,8 @@ import type {
 	ExtensionContext,
 	ToolCallEvent,
 	ToolCallEventResult,
-} from "@mariozechner/pi-coding-agent";
-import { isToolCallEventType } from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
+import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 import { ASK_BEFORE_TIMEOUT_MS } from "../constants";
 import type { Store } from "../store";
 import { DIALOGS, REFUSAL } from "../strings";

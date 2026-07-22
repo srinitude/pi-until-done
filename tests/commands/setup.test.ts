@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { fauxAssistantMessage } from "@mariozechner/pi-ai";
+import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
 import {
 	createTestRuntime,
 	type TestRuntime,
@@ -47,7 +47,7 @@ describe("/until-done <intent> setup flow", () => {
 		});
 		// Toggle autopilot on first
 		await rt.prompt("/until-done autopilot");
-		expect(rt.store.autopilotEnabled).toBe(true);
+		expect(rt.store.state.autopilotEnabled).toBe(true);
 		// Now setup — confirm dialog should NOT appear
 		const beforeConfirms = rt.ui.confirms.length;
 		rt.setLLM([fauxAssistantMessage("ack", { stopReason: "stop" })]);

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { fauxAssistantMessage } from "@mariozechner/pi-ai";
 import { makeNorthStar } from "../helpers/factories";
 import {
 	createTestRuntime,
@@ -34,10 +33,27 @@ describe("session_start (real runtime)", () => {
 	});
 });
 
+const emitCompact = async (runtime: TestRuntime): Promise<void> => {
+	await runtime.session.extensionRunner.emit({
+		type: "session_compact",
+		compactionEntry: {} as never,
+		fromExtension: false,
+		reason: "manual",
+		willRetry: false,
+	});
+};
+
+const compactionEntry = (runtime: TestRuntime) =>
+	runtime.session.sessionManager.getBranch().find(
+		(entry) =>
+			entry.type === "custom_message" &&
+			(entry as { customType?: string }).customType ===
+				"until-done.compaction-context",
+	);
+
 describe("session_compact re-anchor (#2 fix)", () => {
-	test("emits a CustomMessageEntry of customType 'until-done.compaction-context' on compact", async () => {
+	test("emits a hidden compaction context message for an active goal", async () => {
 		rt = await createTestRuntime({ withUi: true });
-		// Seed an active goal and produce some compactable context
 		rt.store.state = {
 			...rt.store.state,
 			status: "active",
@@ -45,64 +61,22 @@ describe("session_compact re-anchor (#2 fix)", () => {
 			goal: "ship X",
 			northStar: makeNorthStar(),
 			confirmedByUser: true,
-			maxTurns: 100,
 			evidence: ["found surface", "wrote failing test"],
-			tasks: [],
 			turnsUsed: 5,
 		};
-		// Drive a turn so the session has at least one assistant message
-		rt.setLLM([fauxAssistantMessage("ack", { stopReason: "stop" })]);
-		await rt.prompt("hi");
-		await rt.awaitIdle();
-		// Trigger compaction. ctx.compact is async-fire-and-forget;
-		// session_compact fires after the compaction LLM call.
-		// The faux provider serves the compaction's summarizer call too;
-		// queue an extra message for it.
-		rt.appendLLM([fauxAssistantMessage("compaction summary", { stopReason: "stop" })]);
-		const ctx = rt.session.extensionRunner.createContext();
-		ctx.compact();
-		// Wait for compaction to complete (it's async). Poll for the custom_message entry.
-		const start = Date.now();
-		while (Date.now() - start < 5000) {
-			const branch = rt.session.sessionManager.getBranch();
-			const found = branch.find(
-				(e) =>
-					e.type === "custom_message" &&
-					(e as { customType?: string }).customType ===
-						"until-done.compaction-context",
-			);
-			if (found) {
-				// found! verify content includes goal + recent evidence
-				const content = (found as { content: string }).content;
-				expect(typeof content).toBe("string");
-				expect(content).toContain("ship X");
-				expect(content).toContain("found surface");
-				return;
-			}
-			await new Promise((r) => setTimeout(r, 50));
-		}
-		throw new Error("compaction-context custom_message not appended within 5s");
+		await emitCompact(rt);
+		const found = compactionEntry(rt) as
+			| { content: string; display: boolean }
+			| undefined;
+		expect(found?.display).toBe(false);
+		expect(found?.content).toContain("ship X");
+		expect(found?.content).toContain("found surface");
 	});
 
-	test("session_compact does NOT fire when status is not 'active'", async () => {
+	test("does not append compaction context when status is not active", async () => {
 		rt = await createTestRuntime({ withUi: true });
-		// Status is "setup" by default. Drive a turn. Trigger compact.
-		rt.setLLM([fauxAssistantMessage("ack", { stopReason: "stop" })]);
-		await rt.prompt("hi");
-		await rt.awaitIdle();
-		rt.appendLLM([fauxAssistantMessage("compaction summary", { stopReason: "stop" })]);
-		const ctx = rt.session.extensionRunner.createContext();
-		ctx.compact();
-		// Wait briefly and assert NO compaction-context entry appears.
-		await new Promise((r) => setTimeout(r, 500));
-		const branch = rt.session.sessionManager.getBranch();
-		const found = branch.find(
-			(e) =>
-				e.type === "custom_message" &&
-				(e as { customType?: string }).customType ===
-					"until-done.compaction-context",
-		);
-		expect(found).toBeUndefined();
+		await emitCompact(rt);
+		expect(compactionEntry(rt)).toBeUndefined();
 	});
 });
 
