@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `/until-done approve` opens the contract gate only after the contract and
+  full task plan are visible.
+- A bounded, read-only issue-triage workflow stages structured assessments
+  for local maintainer review without receiving issue-write credentials.
+
+### Fixed
+- Setup no longer races into the contract confirmation dialog immediately
+  after queuing the drafting prompt. This fixes issue #1.
+
+### Changed
+- Issue comments and label changes require local maintainer approval and use
+  that maintainer's authenticated GitHub account.
+- `docs/superpowers/` is excluded from the current and future repository tree.
+
 ## [0.3.0] — 2026-07-22
 
 ### Breaking

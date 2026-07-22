@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const generated = [
+	".github/workflows/issue-triage.lock.yml",
 	".github/workflows/pi-runtime-review.lock.yml",
 	".github/workflows/pi-upstream-lockstep.lock.yml",
 	".github/workflows/agentics-maintenance.yml",

@@ -5,6 +5,10 @@ const LIFECYCLE = {
 	setupStarted: (intent: string) =>
 		`/until-done · setup started for "${intent}"`,
 	contractApproved: "/until-done · contract approved. Pi will activate now.",
+	contractAlreadyApproved: "/until-done · contract is already approved.",
+	contractApprovalNeedsUi:
+		"Contract approval requires an interactive UI. Re-run `/until-done approve` there.",
+	noContractToApprove: "No pending contract to approve.",
 	contractRejected: "/until-done · contract rejected. Goal cleared.",
 	paused: "/until-done paused.",
 	resumed: (g: string) => `/until-done resumed (budget reset). Goal: ${g}`,

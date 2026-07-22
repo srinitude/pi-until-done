@@ -46,12 +46,12 @@ const PHASE_2 = [
 	"   - Include a final CLEANUP task: strip debug prints, scratch files, and any guardrail violations the loop introduced. The diff must be production-shaped before complete.",
 	"   - The very last task is verification: run verifyCommand, confirm done-criteria, quote the output.",
 	"4. Show the contract AND the full YAML task list back to the user as plain markdown.",
-	"5. Ask: 'Approve contract + task plan? (yes/no)'.",
+	"5. After showing the full draft, ask the user to run `/until-done approve` to open the approval dialog.",
 ];
 
 const PHASE_3 = [
 	"PHASE 3 — ACTIVATION",
-	"6. After the user confirms:",
+	"6. After `/until-done approve` succeeds (or explicit autopilot approval is present):",
 	"   a. Call `until_done_set` with the contract fields (including goalType, surfaces, AND the judge-mode field — judgeModel or sameModelJudge — chosen in PHASE 1).",
 	"   b. Call `until_done_plan` with the full tasks array.",
 	"7. Begin work on the first task with no dependencies.",
@@ -95,5 +95,5 @@ export const setupPrompt = (intent: string): string =>
 		"",
 		...PHASE_4,
 		"",
-		"DO NOT call any until_done_* tool until the user confirms in PHASE 2.",
+		"DO NOT call any until_done_* tool until PHASE 2 approval succeeds.",
 	].join("\n");

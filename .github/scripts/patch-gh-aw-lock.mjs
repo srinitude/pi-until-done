@@ -2,8 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 
 const workflows = new URL("../workflows/", import.meta.url);
 
-async function patchCopilotByokOutput() {
-	const path = new URL("pi-upstream-lockstep.lock.yml", workflows);
+async function patchCopilotByokOutput(name) {
+	const path = new URL(name, workflows);
 	const source = await readFile(path, "utf8");
 	const activation = source.match(/jobs:\n  activation:[\s\S]*?\n  agent:/)?.[0];
 	if (!activation) throw new Error("gh-aw activation job not found");
@@ -37,6 +37,18 @@ async function patchOpenCodeProvider() {
 	await writeFile(path, patched);
 }
 
+async function patchDisabledDetectionOutput() {
+	const path = new URL("issue-triage.lock.yml", workflows);
+	const source = await readFile(path, "utf8");
+	const oldValue =
+		"DETECTION_AGENTIC_EXECUTION_OUTCOME: ${{ steps.detection_agentic_execution.outcome }}";
+	const newValue = "DETECTION_AGENTIC_EXECUTION_OUTCOME: skipped";
+	if (!source.includes(oldValue) && !source.includes(newValue)) {
+		throw new Error("gh-aw disabled detection marker not found");
+	}
+	await writeFile(path, source.replace(oldValue, newValue));
+}
+
 async function patchMaintenanceChoice() {
 	const path = new URL("agentics-maintenance.yml", workflows);
 	const source = await readFile(path, "utf8");
@@ -46,6 +58,12 @@ async function patchMaintenanceChoice() {
 	await writeFile(path, patched);
 }
 
-await patchCopilotByokOutput();
+for (const name of [
+	"issue-triage.lock.yml",
+	"pi-upstream-lockstep.lock.yml",
+]) {
+	await patchCopilotByokOutput(name);
+}
 await patchOpenCodeProvider();
+await patchDisabledDetectionOutput();
 await patchMaintenanceChoice();

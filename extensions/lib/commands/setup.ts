@@ -74,29 +74,31 @@ const rejectContract = (
 	ctx.ui.notify(NOTIFY.contractRejected, "info");
 };
 
-const awaitContractConfirmation = async (
+export const cmdApprove = async (
 	pi: ExtensionAPI,
 	store: Store,
 	ctx: ExtensionCommandContext,
 ): Promise<void> => {
-	if (store.state.autopilotEnabled) {
-		grantContractApproval(pi, store, ctx, "autopilot");
-		refreshStatus(store, ctx);
-		refreshWidget(store, ctx, true);
+	if (store.state.status !== "setup" || !store.state.goal) {
+		ctx.ui.notify(NOTIFY.noContractToApprove, "warning");
 		return;
 	}
-	if (!ctx.hasUI) return;
-	await ctx.waitForIdle();
+	if (store.state.confirmedByUser) {
+		ctx.ui.notify(NOTIFY.contractAlreadyApproved, "info");
+		return;
+	}
+	if (!ctx.hasUI) {
+		ctx.ui.notify(NOTIFY.contractApprovalNeedsUi, "warning");
+		return;
+	}
 	const confirmed = await ctx.ui.confirm(
 		DIALOGS.approveTitle,
 		DIALOGS.approveMessage,
 		{ timeout: SETUP_CONFIRM_TIMEOUT_MS },
 	);
-	if (confirmed) {
+	if (confirmed)
 		grantContractApproval(pi, store, ctx, "user approved contract");
-	} else {
-		rejectContract(pi, store, ctx);
-	}
+	else rejectContract(pi, store, ctx);
 	refreshStatus(store, ctx);
 	refreshWidget(store, ctx, true);
 };
@@ -121,7 +123,9 @@ export const cmdSetup = async (
 	initSetupState(pi, store, intent);
 	pi.sendUserMessage(setupPrompt(intent));
 	ctx.ui.notify(NOTIFY.setupStarted(intent), "info");
+	if (store.state.autopilotEnabled) {
+		grantContractApproval(pi, store, ctx, "autopilot");
+	}
 	refreshStatus(store, ctx);
 	refreshWidget(store, ctx, true);
-	await awaitContractConfirmation(pi, store, ctx);
 };

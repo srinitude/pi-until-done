@@ -5,6 +5,7 @@ export const HELP_TEXT = [
 	"/until-done status            — show current state",
 	"/until-done pause             — pause autonomous continuation",
 	"/until-done resume            — resume after pause/block (resets budget)",
+	"/until-done approve           — approve the visible contract and task plan",
 	"/until-done cancel            — clear the active goal (only way to change North Star)",
 	`/until-done budget <n>        — set turn budget (1..${HARD_BUDGET_CEILING})`,
 	"/until-done detail            — open full contract overlay",

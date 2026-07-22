@@ -22,13 +22,14 @@ import {
 	cmdTasks,
 } from "./info";
 import { cmdJudge } from "./judge";
-import { cmdSetup } from "./setup";
+import { cmdApprove, cmdSetup } from "./setup";
 
 export const subcommands = [
 	"status",
 	"pause",
 	"resume",
 	"cancel",
+	"approve",
 	"budget",
 	"detail",
 	"plan",
@@ -46,6 +47,7 @@ const ZERO_ARG_SUBCOMMANDS = new Set([
 	"pause",
 	"resume",
 	"cancel",
+	"approve",
 	"detail",
 	"tasks",
 	"plan",
@@ -74,6 +76,7 @@ const dispatchZero = async (
 	else if (head === "pause") await cmdPause(pi, store, ctx);
 	else if (head === "resume") await cmdResume(pi, store, ctx);
 	else if (head === "cancel") await cmdCancel(pi, store, ctx);
+	else if (head === "approve") await cmdApprove(pi, store, ctx);
 	else if (head === "detail") await cmdDetail(store, ctx);
 	else if (head === "tasks") cmdTasks(store, ctx);
 	else if (head === "plan") cmdPlanPath(ctx);
