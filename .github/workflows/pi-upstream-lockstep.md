@@ -20,7 +20,7 @@ engine:
   args: ["--effort=high"]
   env:
     COPILOT_PROVIDER_BASE_URL: https://openrouter.ai/api/v1
-    COPILOT_PROVIDER_API_KEY: ${{ secrets.GITHUB_OPENROUTER_API_KEY }}
+    COPILOT_PROVIDER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
     COPILOT_PROVIDER_TYPE: openai
     COPILOT_PROVIDER_WIRE_API: completions
     COPILOT_PROVIDER_MAX_PROMPT_TOKENS: "500000"

@@ -159,7 +159,7 @@ There is one repair branch and at most one repair PR per Pi version.
 
 ### Grok repair job
 
-The gh-aw source workflow runs Copilot CLI in BYOK mode against `https://openrouter.ai/api/v1` using repository secret `GITHUB_OPENROUTER_API_KEY`:
+The gh-aw source workflow runs Copilot CLI in BYOK mode against `https://openrouter.ai/api/v1` using repository secret `OPENROUTER_API_KEY`:
 
 - model `x-ai/grok-4.5`;
 - reasoning `high`;

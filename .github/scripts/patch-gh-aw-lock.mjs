@@ -21,6 +21,7 @@ async function patchCopilotByokOutput() {
 async function patchMaintenanceChoice() {
 	const path = new URL("agentics-maintenance.yml", workflows);
 	const source = await readFile(path, "utf8");
+	if (source.includes("        default: 'none'\n        options:\n          - 'none'")) return;
 	const patched = source.replace("        default: ''\n        options:\n          - ''", "        default: 'none'\n        options:\n          - 'none'");
 	if (patched === source) throw new Error("gh-aw maintenance choice marker not found");
 	await writeFile(path, patched);

@@ -17,7 +17,8 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("max-daily-ai-credits: 500");
 		expect(source).toContain("max-ai-credits: 25");
 		expect(source).toContain('version: "1.0.71"');
-		expect(source).toContain("GITHUB_OPENROUTER_API_KEY");
+		expect(source).toContain("secrets.OPENROUTER_API_KEY");
+		expect(source).not.toContain("GITHUB_OPENROUTER_API_KEY");
 		expect(source).toContain("https://openrouter.ai/api/v1");
 	});
 
