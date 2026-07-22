@@ -18,6 +18,19 @@ async function patchCopilotByokOutput(name) {
 	);
 }
 
+async function patchCopilotReasoningAdapter(name) {
+	const path = new URL(name, workflows);
+	const source = await readFile(path, "utf8");
+	const wireModel = "COPILOT_PROVIDER_WIRE_MODEL: x-ai/grok-4.5";
+	const oldValue = "COPILOT_MODEL: x-ai/grok-4.5";
+	const newValue = "COPILOT_MODEL: gpt-5.4";
+	if (!source.includes(wireModel)) throw new Error("Grok wire model marker not found");
+	if (!source.includes(oldValue) && !source.includes(newValue)) {
+		throw new Error("Copilot reasoning adapter marker not found");
+	}
+	await writeFile(path, source.replaceAll(oldValue, newValue));
+}
+
 async function patchOpenCodeProvider() {
 	const path = new URL("pi-runtime-review.lock.yml", workflows);
 	const source = await readFile(path, "utf8");
@@ -63,6 +76,7 @@ for (const name of [
 	"pi-upstream-lockstep.lock.yml",
 ]) {
 	await patchCopilotByokOutput(name);
+	await patchCopilotReasoningAdapter(name);
 }
 await patchOpenCodeProvider();
 await patchDisabledDetectionOutput();

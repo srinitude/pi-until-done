@@ -25,6 +25,18 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("https://openrouter.ai/api/v1");
 	});
 
+	test("adapts explicit Grok high effort to its Responses wire model", async () => {
+		for (const name of ["pi-upstream-lockstep", "issue-triage"]) {
+			const source = await workflow(`${name}.md`);
+			const lock = await workflow(`${name}.lock.yml`);
+			expect(source).toContain("COPILOT_PROVIDER_WIRE_API: responses");
+			expect(source).toContain("COPILOT_PROVIDER_WIRE_MODEL: x-ai/grok-4.5");
+			expect(source).toContain("--effort=high");
+			expect(lock).toContain("COPILOT_MODEL: gpt-5.4");
+			expect(lock).not.toContain("COPILOT_MODEL: x-ai/grok-4.5");
+		}
+	});
+
 	test("uses an isolated GitHub App safe output with patch limits", async () => {
 		const source = await workflow("pi-upstream-lockstep.md");
 		expect(source).toContain("PI_LOCKSTEP_APP_CLIENT_ID");
