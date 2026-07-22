@@ -1,6 +1,6 @@
 {
   "name": "pi-until-done",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Evidence-driven /until-done goal loops for Pi with TDD planning, mise verification, and mandatory LLM judge gating.",
   "license": "MIT",
   "author": {
