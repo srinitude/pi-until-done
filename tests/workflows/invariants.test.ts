@@ -57,6 +57,15 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).not.toContain("tools:\n  edit:");
 	});
 
+	test("compiled OpenCode config routes GLM through the OpenAI proxy", async () => {
+		const source = await workflow("pi-runtime-review.lock.yml");
+		expect(source).toContain('"model": "awf-proxy/glm-5.2"');
+		expect(source).toContain('"api": "http://172.30.0.30:10000"');
+		expect(source).toContain('"apiKey": "awf-openai-proxy"');
+		expect(source).not.toContain('"api": "http://172.30.0.30:10002"');
+		expect(source).not.toContain('"apiKey": "awf-copilot-proxy"');
+	});
+
 	test("conditionally requires exact-head GLM approval only for runtime changes", async () => {
 		const source = await workflow("runtime-review-gate.yml");
 		expect(source).toContain("extensions/");

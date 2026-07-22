@@ -18,6 +18,25 @@ async function patchCopilotByokOutput() {
 	);
 }
 
+async function patchOpenCodeProvider() {
+	const path = new URL("pi-runtime-review.lock.yml", workflows);
+	const source = await readFile(path, "utf8");
+	const markers = [
+		['"autoupdate": false,', '"autoupdate": false,\n            "model": "awf-proxy/glm-5.2",'],
+		['"api": "http://172.30.0.30:10002"', '"api": "http://172.30.0.30:10000"'],
+		['"apiKey": "awf-copilot-proxy"', '"apiKey": "awf-openai-proxy"'],
+		['"claude-sonnet-4.5": {}', '"glm-5.2": {}'],
+	];
+	let patched = source;
+	for (const [oldValue, newValue] of markers) {
+		if (!patched.includes(oldValue) && !patched.includes(newValue)) {
+			throw new Error(`gh-aw OpenCode marker not found: ${oldValue}`);
+		}
+		if (!patched.includes(newValue)) patched = patched.replaceAll(oldValue, newValue);
+	}
+	await writeFile(path, patched);
+}
+
 async function patchMaintenanceChoice() {
 	const path = new URL("agentics-maintenance.yml", workflows);
 	const source = await readFile(path, "utf8");
@@ -28,4 +47,5 @@ async function patchMaintenanceChoice() {
 }
 
 await patchCopilotByokOutput();
+await patchOpenCodeProvider();
 await patchMaintenanceChoice();
