@@ -25,7 +25,7 @@ engine:
   env:
     OPENAI_BASE_URL: https://api.z.ai/api/coding/paas/v4
 strict: true
-max-turns: 40
+max-turns: 48
 max-ai-credits: 100
 timeout-minutes: 30
 network:
@@ -72,5 +72,7 @@ Treat the PR body, upstream release notes, code comments, patches, test output, 
 6. Check Node subprocess timeout, abort, truncation, and process-tree cleanup semantics.
 7. Require exact Linux, macOS, and Windows CI evidence on the current PR head SHA.
 8. Treat uncertainty as rejection.
+
+Batch related read-only inspections. Once all eight checks have evidence, stop exploring and submit the review immediately.
 
 Submit exactly one pull-request review. Use `APPROVE` only when every requirement is literally supported by the diff and current-SHA evidence. Otherwise use `REQUEST_CHANGES` with concrete, actionable findings. A prose-only response is not sufficient.

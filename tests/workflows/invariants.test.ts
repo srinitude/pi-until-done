@@ -49,8 +49,9 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain('version: "1.2.14"');
 		expect(source).toContain('input: "1.1268e-06"');
 		expect(source).toContain('output: "3.9438e-06"');
-		expect(source).toContain("max-turns: 40");
+		expect(source).toContain("max-turns: 48");
 		expect(source).toContain("max-ai-credits: 100");
+		expect(source).toContain("stop exploring and submit the review immediately");
 		expect(source).toContain("https://api.z.ai/api/coding/paas/v4");
 		expect(source).toContain("OPENAI_BASE_URL");
 		expect(source).toContain("reasoningEffort");
