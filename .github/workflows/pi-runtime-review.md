@@ -25,7 +25,7 @@ engine:
   env:
     OPENAI_BASE_URL: https://api.z.ai/api/coding/paas/v4
 strict: true
-max-turns: 32
+max-turns: 40
 max-ai-credits: 100
 timeout-minutes: 30
 network:
