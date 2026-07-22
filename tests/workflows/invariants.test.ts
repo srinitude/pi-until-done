@@ -32,7 +32,8 @@ describe("Pi lockstep agentic workflows", () => {
 			expect(source).toContain("COPILOT_PROVIDER_WIRE_API: responses");
 			expect(source).toContain("COPILOT_PROVIDER_WIRE_MODEL: x-ai/grok-4.5");
 			expect(source).toContain("--effort=high");
-			expect(lock).toContain("COPILOT_MODEL: gpt-5.4");
+			expect(lock).toContain("COPILOT_MODEL: gpt-5.4-mini");
+			expect(lock).not.toContain("COPILOT_MODEL: gpt-5.4\n");
 			expect(lock).not.toContain("COPILOT_MODEL: x-ai/grok-4.5");
 		}
 	});

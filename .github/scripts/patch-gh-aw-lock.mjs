@@ -23,7 +23,7 @@ async function patchCopilotReasoningAdapter(name) {
 	const source = await readFile(path, "utf8");
 	const wireModel = "COPILOT_PROVIDER_WIRE_MODEL: x-ai/grok-4.5";
 	const oldValue = "COPILOT_MODEL: x-ai/grok-4.5";
-	const newValue = "COPILOT_MODEL: gpt-5.4";
+	const newValue = "COPILOT_MODEL: gpt-5.4-mini";
 	if (!source.includes(wireModel)) throw new Error("Grok wire model marker not found");
 	if (!source.includes(oldValue) && !source.includes(newValue)) {
 		throw new Error("Copilot reasoning adapter marker not found");

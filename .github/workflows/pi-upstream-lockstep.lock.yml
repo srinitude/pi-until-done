@@ -885,7 +885,7 @@ jobs:
           AWF_REFLECT_ENABLED: 1
           COPILOT_AGENT_RUNNER_TYPE: STANDALONE
           COPILOT_DUMMY_BYOK: dummy-byok-key-for-offline-mode
-          COPILOT_MODEL: gpt-5.4
+          COPILOT_MODEL: gpt-5.4-mini
           COPILOT_PROVIDER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           COPILOT_PROVIDER_BASE_URL: https://openrouter.ai/api/v1
           COPILOT_PROVIDER_MAX_OUTPUT_TOKENS: 131072
@@ -1507,7 +1507,7 @@ jobs:
           AWF_REFLECT_ENABLED: 1
           COPILOT_AGENT_RUNNER_TYPE: STANDALONE
           COPILOT_DUMMY_BYOK: dummy-byok-key-for-offline-mode
-          COPILOT_MODEL: gpt-5.4
+          COPILOT_MODEL: gpt-5.4-mini
           COPILOT_PROVIDER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           COPILOT_PROVIDER_BASE_URL: https://openrouter.ai/api/v1
           COPILOT_PROVIDER_MAX_OUTPUT_TOKENS: 131072
