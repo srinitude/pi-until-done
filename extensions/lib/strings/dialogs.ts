@@ -10,7 +10,7 @@ export const DIALOGS = {
 	cancelMessage: (g: string) => `Cancel goal: ${g}`,
 	approveTitle: "/until-done · approve contract?",
 	approveMessage:
-		"Pi has drafted the contract. Approve to let Pi call `until_done_set` and begin pursuit.",
+		"Review the visible contract and task plan. Approve to let Pi call `until_done_set` and begin pursuit.",
 	askBeforeTitle: "/until-done · ask-before",
 	askBeforeMessage: (kind: string, command: string | undefined) =>
 		`Pi wants to run a "${kind}" command:\n\n${command ?? ""}\n\nAllow?`,

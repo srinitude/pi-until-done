@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "../..");
@@ -81,5 +81,23 @@ describe("strict Pi compatibility metadata", () => {
 			piVersion: "0.81.1",
 			nodeVersion: "22.19.0",
 		});
+	});
+
+	test("documents explicit approval and staged issue triage", async () => {
+		const readme = await readFile(resolve(root, "README.md"), "utf8");
+		expect(readme).toContain("`/until-done approve`");
+		expect(readme).toContain("stages read-only assessments");
+		expect(readme).toContain("authenticated account");
+	});
+
+	test("keeps local design scratch out of the repository tree", async () => {
+		const ignore = await readFile(resolve(root, ".gitignore"), "utf8");
+		expect(ignore.split(/\r?\n/)).toContain("/docs/superpowers/");
+		for (const path of [
+			"docs/superpowers/plans/2026-07-22-pi-081-lockstep-rewrite.md",
+			"docs/superpowers/specs/2026-07-22-pi-081-lockstep-rewrite-design.md",
+		]) {
+			await expect(access(resolve(root, path))).rejects.toBeDefined();
+		}
 	});
 });

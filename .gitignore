@@ -42,6 +42,9 @@ coverage/
 .copilotignore
 .github/copilot-instructions.md
 
+# Local design scratch
+/docs/superpowers/
+
 # Local mise overrides
 mise.local.toml
 .mise.local.toml

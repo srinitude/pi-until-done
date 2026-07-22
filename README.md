@@ -49,12 +49,13 @@ Start with an intent:
 Pi will:
 
 1. clarify the outcome, goal type, accessible evidence surfaces, and verification command;
-2. draft a contract for approval;
-3. call `until_done_set` and `until_done_plan`;
-4. work through ANALYSIS → BOOTSTRAP → RED → GREEN → REFACTOR → VERIFY → DONE;
-5. continue only after Pi emits `agent_settled`;
-6. run the completion judge against the cited evidence;
-7. mark the goal done only on an approving verdict.
+2. display the complete contract and task plan;
+3. wait for the user to run `/until-done approve`;
+4. call `until_done_set` and `until_done_plan` after approval;
+5. work through ANALYSIS → BOOTSTRAP → RED → GREEN → REFACTOR → VERIFY → DONE;
+6. continue only after Pi emits `agent_settled`;
+7. run the completion judge against the cited evidence;
+8. mark the goal done only on an approving verdict.
 
 A non-mise verification command is automatically routed through `mise exec --`. A command already beginning with `mise run` or `mise exec` is preserved.
 
@@ -86,7 +87,8 @@ The judge sees only the goal, done criteria, verification command, and executor-
 
 | Command | Purpose |
 | --- | --- |
-| `/until-done <intent>` | Draft and confirm a new goal contract |
+| `/until-done <intent>` | Draft and display a new goal contract and task plan |
+| `/until-done approve` | Open the approval dialog for the visible draft |
 | `/until-done status` | Show concise state |
 | `/until-done detail` | Show full state and task detail |
 | `/until-done tasks` | Show the current plan |
@@ -155,6 +157,10 @@ A deterministic daily workflow compares all three latest `@earendil-works/pi-*` 
 - protected-branch Linux/macOS/Windows CI before auto-merge.
 
 Future compatibility releases use two separately verified `main` SHAs: one after the compatibility merge and one after a version-only PR. Initial `0.3.0` publishing remains manually initiated. npm publishing uses trusted publishing with provenance and re-runs release readiness on the exact tag SHA.
+
+## Maintainer issue triage
+
+The issue workflow stages read-only assessments as short-lived Actions artifacts. It cannot comment, label, close, or edit an issue, and it receives no issue-write credential. A maintainer reviews the staged evidence and final wording locally. Approved labels and comments are then applied through that maintainer's authenticated account.
 
 ## Security and privacy
 

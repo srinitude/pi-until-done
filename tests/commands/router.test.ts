@@ -20,6 +20,7 @@ describe("subcommand registry", () => {
 			"pause",
 			"resume",
 			"cancel",
+			"approve",
 			"budget",
 			"detail",
 			"plan",

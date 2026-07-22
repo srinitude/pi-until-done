@@ -23,10 +23,13 @@ describe("end-to-end happy path: setup → set → plan → progress → complet
 			uiPolicy: { confirm: () => true },
 		});
 
-		// Step 1: user starts setup. Pi auto-confirms via the UI policy.
-		// Faux response acknowledges and stops.
-		rt.setLLM([fauxAssistantMessage("ack", { stopReason: "stop" })]);
+		// Step 1: Pi shows the draft, then the user explicitly approves it.
+		rt.setLLM([fauxAssistantMessage("Contract and full task plan")]);
 		await rt.prompt("/until-done implement /healthz endpoint");
+		await rt.awaitIdle();
+		expect(rt.store.state.confirmedByUser).toBe(false);
+		rt.setLLM([fauxAssistantMessage("Approval recorded")]);
+		await rt.prompt("/until-done approve");
 		await rt.awaitIdle();
 		expect(rt.store.state.confirmedByUser).toBe(true);
 		expect(rt.store.state.status).toBe("setup");
