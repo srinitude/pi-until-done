@@ -108,6 +108,16 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("Docker unavailable; strict gh-aw compile completed");
 	});
 
+	test("serializes generated workflow writes before the full test suite", async () => {
+		const source = await readFile(resolve(root, "mise.toml"), "utf8");
+		const testCi = source.match(/\[tasks\.test-ci\][\s\S]*?\n\n/)?.[0];
+		const ci = source.match(/\[tasks\.ci\][\s\S]*?\n\n/)?.[0];
+		expect(testCi).toContain('depends = ["workflows"]');
+		expect(testCi).toContain('run = "mise run test"');
+		expect(ci).toContain('"test-ci"');
+		expect(ci).not.toContain('\n  "test",');
+	});
+
 	test("removes the stale PAT and CodeRabbit merge gate", async () => {
 		const path = resolve(
 			root,

@@ -101,6 +101,11 @@ fi
 description = "Fast pre-commit gate — typecheck + lint + format in parallel"
 depends = ["typecheck", "lint", "format"]
 
+[tasks.test-ci]
+description = "Run the full suite after generated workflow validation completes"
+depends = ["workflows"]
+run = "mise run test"
+
 [tasks.ci]
 description = "Full CI suite (everything until-done's runtime CI runs on agent_settled)"
 depends = [
@@ -108,11 +113,10 @@ depends = [
   "lint",
   "format",
   "compile",
-  "test",
+  "test-ci",
   "test-node",
   "build",
   "structure",
-  "workflows",
 ]
 depends_post = ["fmt-toml"]
 
