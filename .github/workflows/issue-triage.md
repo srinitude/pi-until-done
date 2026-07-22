@@ -32,7 +32,7 @@ engine:
     COPILOT_PROVIDER_MAX_PROMPT_TOKENS: "500000"
     COPILOT_PROVIDER_MAX_OUTPUT_TOKENS: "32768"
 strict: true
-max-turns: 10
+max-turns: 16
 max-ai-credits: 100
 max-daily-ai-credits: 125
 timeout-minutes: 30
@@ -183,4 +183,4 @@ A staged assessment is not issue copy. Keep `assessment` factual, under 1,200 ch
 
 Choose one existing label, one disposition, and one next step from the `stage_triage` schema. Use a semantic version only when supported by release evidence. Do not comment, label, close, edit, reopen, or otherwise change an issue. Do not edit code, create branches or pull requests, merge, tag, publish, or expose credentials.
 
-Stage every required assessment and stop. The maintainer will write and review final issue copy locally before any action is taken from their authenticated account.
+Stage every required assessment, then call `task_complete` immediately. The maintainer will write and review final issue copy locally before any action is taken from their authenticated account.

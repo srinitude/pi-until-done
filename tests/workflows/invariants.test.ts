@@ -118,8 +118,9 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("types: [opened, reopened, edited]");
 		expect(source).toContain("roles: all");
 		expect(source).toContain("x-ai/grok-4.5");
-		expect(source).toContain("max-turns: 10");
+		expect(source).toContain("max-turns: 16");
 		expect(source).toContain("max-continuations: 16");
+		expect(source).toContain("call `task_complete` immediately");
 		expect(source).toContain("at most 25");
 		expect(source).toContain("TRIAGE_MAX_ITEMS");
 	});
