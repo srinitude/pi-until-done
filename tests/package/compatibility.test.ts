@@ -90,6 +90,12 @@ describe("strict Pi compatibility metadata", () => {
 		expect(readme).toContain("authenticated account");
 	});
 
+	test("records the published 0.3.1 release in the changelog", async () => {
+		const changelog = await readFile(resolve(root, "CHANGELOG.md"), "utf8");
+		expect(changelog).toContain("## [0.3.1] — 2026-07-22");
+		expect(changelog).toContain("compare/v0.3.1...HEAD");
+	});
+
 	test("keeps local design scratch out of the repository tree", async () => {
 		const ignore = await readFile(resolve(root, ".gitignore"), "utf8");
 		expect(ignore.split(/\r?\n/)).toContain("/docs/superpowers/");

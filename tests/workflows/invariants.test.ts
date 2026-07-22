@@ -11,7 +11,7 @@ describe("Pi lockstep agentic workflows", () => {
 	test("uses Grok 4.5 high as the bounded primary repair model", async () => {
 		const source = await workflow("pi-upstream-lockstep.md");
 		expect(source).toContain("x-ai/grok-4.5");
-		expect(source).toContain("--effort=high");
+		expect(source).not.toContain("--effort=high");
 		expect(source).toContain("max-turns: 3");
 		expect(source).toContain("max-continuations: 16");
 		expect(source).toContain("max-ai-credits: 475");
@@ -23,6 +23,22 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("secrets.OPENROUTER_API_KEY");
 		expect(source).not.toContain("GITHUB_OPENROUTER_API_KEY");
 		expect(source).toContain("https://openrouter.ai/api/v1");
+	});
+
+	test("fails closed unless Grok defaults to mandatory high reasoning", async () => {
+		for (const name of ["pi-upstream-lockstep", "issue-triage"]) {
+			const source = await workflow(`${name}.md`);
+			const lock = await workflow(`${name}.lock.yml`);
+			expect(source).toContain('default_effort == "high"');
+			expect(source).toContain(".reasoning.mandatory == true");
+			expect(source).toContain("COPILOT_PROVIDER_WIRE_API: completions");
+			expect(source).not.toContain("COPILOT_PROVIDER_WIRE_MODEL");
+			expect(lock).toContain("openrouter.ai,awmg-mcpg,packagecloud.io");
+			expect(lock).toContain('"openrouter.ai","awmg-mcpg","packagecloud.io"');
+			expect(lock).toContain('NO_PROXY="${NO_PROXY:+$NO_PROXY,}awmg-mcpg"');
+			expect(lock).toContain("COPILOT_MODEL: x-ai/grok-4.5");
+			expect(lock).not.toContain("COPILOT_MODEL: gpt-5.4");
+		}
 	});
 
 	test("uses an isolated GitHub App safe output with patch limits", async () => {
@@ -102,8 +118,9 @@ describe("Pi lockstep agentic workflows", () => {
 		expect(source).toContain("types: [opened, reopened, edited]");
 		expect(source).toContain("roles: all");
 		expect(source).toContain("x-ai/grok-4.5");
-		expect(source).toContain("max-turns: 1");
+		expect(source).toContain("max-turns: 16");
 		expect(source).toContain("max-continuations: 16");
+		expect(source).toContain("call `task_complete` immediately");
 		expect(source).toContain("at most 25");
 		expect(source).toContain("TRIAGE_MAX_ITEMS");
 	});
@@ -141,7 +158,11 @@ describe("Pi lockstep agentic workflows", () => {
 		const lock = await optionalWorkflow("issue-triage.lock.yml");
 		expect(runner).toContain("issue-triage.lock.yml");
 		expect(lock).toContain("validate-issue-triage-output.mjs");
+		expect(lock).toContain("RUN_DETECTION: false");
 		expect(lock).toContain("DETECTION_AGENTIC_EXECUTION_OUTCOME: skipped");
+		expect(lock).not.toContain(
+			"RUN_DETECTION: ${{ steps.detection_guard.outputs.run_detection }}",
+		);
 		expect(lock).not.toContain("steps.detection_agentic_execution.outcome");
 		expect(lock).not.toContain("issues: write");
 	});

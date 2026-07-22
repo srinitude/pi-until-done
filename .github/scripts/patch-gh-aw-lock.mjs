@@ -18,6 +18,27 @@ async function patchCopilotByokOutput(name) {
 	);
 }
 
+async function patchCopilotMcpGateway(name) {
+	const path = new URL(name, workflows);
+	const source = await readFile(path, "utf8");
+	const markers = [
+		["openrouter.ai,packagecloud.io", "openrouter.ai,awmg-mcpg,packagecloud.io"],
+		['"openrouter.ai","packagecloud.io"', '"openrouter.ai","awmg-mcpg","packagecloud.io"'],
+		[
+			"set +o histexpand; export PATH=",
+			'set +o histexpand; export NO_PROXY="${NO_PROXY:+$NO_PROXY,}awmg-mcpg"; export no_proxy="$NO_PROXY"; export PATH=',
+		],
+	];
+	let patched = source;
+	for (const [oldValue, newValue] of markers) {
+		if (!patched.includes(oldValue) && !patched.includes(newValue)) {
+			throw new Error(`MCP gateway marker not found: ${oldValue}`);
+		}
+		patched = patched.replaceAll(oldValue, newValue);
+	}
+	await writeFile(path, patched);
+}
+
 async function patchOpenCodeProvider() {
 	const path = new URL("pi-runtime-review.lock.yml", workflows);
 	const source = await readFile(path, "utf8");
@@ -40,13 +61,21 @@ async function patchOpenCodeProvider() {
 async function patchDisabledDetectionOutput() {
 	const path = new URL("issue-triage.lock.yml", workflows);
 	const source = await readFile(path, "utf8");
-	const oldValue =
-		"DETECTION_AGENTIC_EXECUTION_OUTCOME: ${{ steps.detection_agentic_execution.outcome }}";
-	const newValue = "DETECTION_AGENTIC_EXECUTION_OUTCOME: skipped";
-	if (!source.includes(oldValue) && !source.includes(newValue)) {
-		throw new Error("gh-aw disabled detection marker not found");
+	const markers = [
+		["RUN_DETECTION: ${{ steps.detection_guard.outputs.run_detection }}", "RUN_DETECTION: false"],
+		[
+			"DETECTION_AGENTIC_EXECUTION_OUTCOME: ${{ steps.detection_agentic_execution.outcome }}",
+			"DETECTION_AGENTIC_EXECUTION_OUTCOME: skipped",
+		],
+	];
+	let patched = source;
+	for (const [oldValue, newValue] of markers) {
+		if (!patched.includes(oldValue) && !patched.includes(newValue)) {
+			throw new Error(`gh-aw disabled detection marker not found: ${oldValue}`);
+		}
+		patched = patched.replace(oldValue, newValue);
 	}
-	await writeFile(path, source.replace(oldValue, newValue));
+	await writeFile(path, patched);
 }
 
 async function patchMaintenanceChoice() {
@@ -63,6 +92,7 @@ for (const name of [
 	"pi-upstream-lockstep.lock.yml",
 ]) {
 	await patchCopilotByokOutput(name);
+	await patchCopilotMcpGateway(name);
 }
 await patchOpenCodeProvider();
 await patchDisabledDetectionOutput();
